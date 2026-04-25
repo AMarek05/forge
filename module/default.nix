@@ -2,9 +2,19 @@
 # Generates language flakes and include scripts at module eval time,
 # ships them to the Nix store, and sets up the forge binary wrapper.
 
-{ config, lib, pkgs, forge, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}@args:
 
 let
+  cfg = config.forge;
+
+  # FIX: Avoid naming the module argument `forge` to prevent collisions with `config.forge`.
+  # Pass your package via `extraSpecialArgs = { forgePkg = ...; }` in your flake setup.
+  forge-binary = args.forgePkg or pkgs.forge or null;
 
   # ─── Language definitions ───────────────────────────────────────────────────
 
@@ -12,40 +22,72 @@ let
     description = "Rust project with cargo";
     path = "Code/Rust";
     direnv = "use flake";
-    requires = [ "cargo" "direnv" ];
-    buildInputs = [ "rustc" "cargo" "rustfmt" "clippy" ];
+    requires = [
+      "cargo"
+      "direnv"
+    ];
+    buildInputs = [
+      "rustc"
+      "cargo"
+      "rustfmt"
+      "clippy"
+    ];
   };
 
   python-lang = {
     description = "Python project with poetry";
     path = "Code/Python";
     direnv = "use flake";
-    requires = [ "poetry" "direnv" ];
-    buildInputs = [ "python311" "poetry" ];
+    requires = [
+      "poetry"
+      "direnv"
+    ];
+    buildInputs = [
+      "python311"
+      "poetry"
+    ];
   };
 
   c-lang = {
     description = "C project with gcc and make";
     path = "Code/C";
     direnv = "use flake";
-    requires = [ "gcc" "make" ];
-    buildInputs = [ "gcc" "make" ];
+    requires = [
+      "gcc"
+      "make"
+    ];
+    buildInputs = [
+      "gcc"
+      "make"
+    ];
   };
 
   cpp-lang = {
     description = "C++ project with cmake";
     path = "Code/C++";
     direnv = "use flake";
-    requires = [ "cmake" "clang" ];
-    buildInputs = [ "cmake" "clang" ];
+    requires = [
+      "cmake"
+      "clang"
+    ];
+    buildInputs = [
+      "cmake"
+      "clang"
+    ];
   };
 
   java-lang = {
     description = "Java project with maven";
     path = "Code/Java";
     direnv = "use flake";
-    requires = [ "maven" "java" ];
-    buildInputs = [ "maven" "jdk17" ];
+    requires = [
+      "maven"
+      "java"
+    ];
+    buildInputs = [
+      "maven"
+      "jdk17"
+    ];
   };
 
   nix-lang = {
@@ -60,8 +102,14 @@ let
     description = "R project with renv";
     path = "Code/R";
     direnv = "use flake";
-    requires = [ "R" "renv" ];
-    buildInputs = [ "R" "renv" ];
+    requires = [
+      "R"
+      "renv"
+    ];
+    buildInputs = [
+      "R"
+      "renv"
+    ];
   };
 
   txt-lang = {
@@ -87,8 +135,14 @@ let
 
   git-include = {
     description = "Initialize git repo and set remote to GitHub";
-    provides = [ "git-init" "git-remote" ];
-    requires = [ "git" "gh" ];
+    provides = [
+      "git-init"
+      "git-remote"
+    ];
+    requires = [
+      "git"
+      "gh"
+    ];
   };
 
   overseer-include = {
@@ -104,9 +158,12 @@ let
 
   # ─── Flake generation ────────────────────────────────────────────────────────
 
-  generate-lang-flake = name: lang:
-    let bi = toString lang.buildInputs;
-    in builtins.toFile "flake.nix" ''
+  generate-lang-flake =
+    name: lang:
+    let
+      bi = toString lang.buildInputs;
+    in
+    builtins.toFile "flake.nix" ''
       {
         description = "${lang.description}";
         inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -125,50 +182,57 @@ let
       }
     '';
 
-  generate-lang-setup = name: lang:
+  generate-lang-setup =
+    name: lang:
     let
       setup-commands =
-        if name == "rust" then ''
-          mkdir -p "$FORGE_PROJECT_PATH"
-          cd "$FORGE_PROJECT_PATH"
-          render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
-          if [ ! -d .git ]; then git init; git add flake.nix; git commit -m "init"; fi
-          cat > .envrc << 'ENVEOF'
-          use flake
-          ENVEOF
-          if [ ! -f Cargo.toml ]; then nix develop . -c cargo init .; fi
-          direnv allow
-        ''
-        else if name == "python" then ''
-          mkdir -p "$FORGE_PROJECT_PATH"
-          cd "$FORGE_PROJECT_PATH"
-          render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
-          if [ ! -d .git ]; then git init; git add flake.nix; git commit -m "init"; fi
-          cat > .envrc << 'ENVEOF'
-          use flake
-          ENVEOF
-          if [ ! -f pyproject.toml ]; then nix develop . -c poetry init --name "$FORGE_PROJECT_NAME" --quiet; fi
-          direnv allow
-        ''
-        else ''
-          mkdir -p "$FORGE_PROJECT_PATH"
-          cd "$FORGE_PROJECT_PATH"
-          render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
-          if [ ! -d .git ]; then git init; git add flake.nix; git commit -m "init"; fi
-          cat > .envrc << 'ENVEOF'
-          use flake
-          ENVEOF
-          direnv allow
-        '';
-    in builtins.toFile "setup.sh" ''
+        if name == "rust" then
+          ''
+            mkdir -p "$FORGE_PROJECT_PATH"
+            cd "$FORGE_PROJECT_PATH"
+            render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
+            if [ ! -d .git ]; then git init; git add flake.nix; git commit -m "init"; fi
+            cat > .envrc << 'ENVEOF'
+            use flake
+            ENVEOF
+            if [ ! -f Cargo.toml ]; then nix develop . -c cargo init .; fi
+            direnv allow
+          ''
+        else if name == "python" then
+          ''
+            mkdir -p "$FORGE_PROJECT_PATH"
+            cd "$FORGE_PROJECT_PATH"
+            render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
+            if [ ! -d .git ]; then git init; git add flake.nix; git commit -m "init"; fi
+            cat > .envrc << 'ENVEOF'
+            use flake
+            ENVEOF
+            if [ ! -f pyproject.toml ]; then nix develop . -c poetry init --name "$FORGE_PROJECT_NAME" --quiet; fi
+            direnv allow
+          ''
+        else
+          ''
+            mkdir -p "$FORGE_PROJECT_PATH"
+            cd "$FORGE_PROJECT_PATH"
+            render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
+            if [ ! -d .git ]; then git init; git add flake.nix; git commit -m "init"; fi
+            cat > .envrc << 'ENVEOF'
+            use flake
+            ENVEOF
+            direnv allow
+          '';
+    in
+    builtins.toFile "setup.sh" ''
       #!/bin/bash
       set -e
-      render_template() { sed "s/{{PROJECT_NAME}}/$${FORGE_PROJECT_NAME}/g" "$1" > "$2"; }
+      # FIX: In Nix multiline strings, standard bash variables don't need escaping.
+      render_template() { sed "s/{{PROJECT_NAME}}/$FORGE_PROJECT_NAME/g" "$1" > "$2"; }
       if [ "$FORGE_DRY_RUN" = "1" ]; then echo "[dry-run] setup"; exit 0; fi
       ${setup-commands}
     '';
 
-  generate-lang-langwl = name: lang:
+  generate-lang-langwl =
+    name: lang:
     builtins.toFile "lang.wl" ''
       name="${name}"
       desc="${lang.description}"
@@ -182,57 +246,63 @@ let
       check=""
     '';
 
-  generate-include-includewl = name: inc:
-    builtins.toFile "include.wl" (builtins.toJSON {
-      inherit (inc) description provides requires;
-      version = "1.0";
-    });
+  generate-include-includewl =
+    name: inc:
+    builtins.toFile "include.wl" (
+      builtins.toJSON {
+        inherit (inc) description provides requires;
+        version = "1.0";
+      }
+    );
 
-  generate-include-setup = name: inc:
+  generate-include-setup =
+    name: inc:
     let
-      script = if name == "git" then ''
-        set -e
-        cd "$FORGE_PROJECT_PATH"
-        if [ ! -d .git ]; then git init; fi
-        REMOTE_URL="git@github.com:$FORGE_GITHUB_USER/$FORGE_PROJECT_NAME.git"
-        git remote add origin "$REMOTE_URL" 2>/dev/null || git remote set-url origin "$REMOTE_URL"
-      '' else if name == "overseer" then ''
-        set -e
-        mkdir -p "$FORGE_PROJECT_PATH/.forge/"
-        cat > "$FORGE_PROJECT_PATH/.forge/overseer.lua" << 'OVSEOF'
-        return {
-          default_task = "build",
-          tasks = {
-            build = { command = "cargo build", name = "build", run-type = "on_save", trigger = "*.rs" },
-            run   = { command = "cargo run",   name = "run",   run-type = "on_save", trigger = "*.rs" },
-            test  = { command = "cargo test",  name = "test",  run-type = "on_save", trigger = "*.rs" },
-          },
-        }
-        OVSEOF
-      '' else "";
-    in builtins.toFile "setup.sh" ''
+      script =
+        if name == "git" then
+          ''
+            set -e
+            cd "$FORGE_PROJECT_PATH"
+            if [ ! -d .git ]; then git init; fi
+            REMOTE_URL="git@github.com:$FORGE_GITHUB_USER/$FORGE_PROJECT_NAME.git"
+            git remote add origin "$REMOTE_URL" 2>/dev/null || git remote set-url origin "$REMOTE_URL"
+          ''
+        else if name == "overseer" then
+          ''
+            set -e
+            mkdir -p "$FORGE_PROJECT_PATH/.forge/"
+            cat > "$FORGE_PROJECT_PATH/.forge/overseer.lua" << 'OVSEOF'
+            return {
+              default_task = "build",
+              tasks = {
+                build = { command = "cargo build", name = "build", run-type = "on_save", trigger = "*.rs" },
+                run   = { command = "cargo run",   name = "run",   run-type = "on_save", trigger = "*.rs" },
+                test  = { command = "cargo test",  name = "test",  run-type = "on_save", trigger = "*.rs" },
+              },
+            }
+            OVSEOF
+          ''
+        else
+          "";
+    in
+    builtins.toFile "setup.sh" ''
       #!/bin/bash
       set -e
       if [ "$FORGE_DRY_RUN" = "1" ]; then echo "[dry-run] ${name} include"; exit 0; fi
       ${script}
     '';
 
-  lang-files = lib.foldlAttrs (acc: name: lang: acc // {
-    "${name}" = {
-      "flake.nix" = generate-lang-flake name lang;
-      "setup.sh"  = generate-lang-setup name lang;
-      "lang.wl"   = generate-lang-langwl name lang;
-    };
-  }) {} all-languages;
+  # FIX: mapAttrs is significantly cleaner and avoids potential strict evaluation issues
+  lang-files = builtins.mapAttrs (name: lang: {
+    "flake.nix" = generate-lang-flake name lang;
+    "setup.sh" = generate-lang-setup name lang;
+    "lang.wl" = generate-lang-langwl name lang;
+  }) all-languages;
 
-  include-files = lib.foldlAttrs (acc: name: inc: acc // {
-    "${name}" = {
-      "include.wl" = generate-include-includewl name inc;
-      "setup.sh"  = generate-include-setup name inc;
-    };
-  }) {} all-includes;
-
-  forge-binary = forge;
+  include-files = builtins.mapAttrs (name: inc: {
+    "include.wl" = generate-include-includewl name inc;
+    "setup.sh" = generate-include-setup name inc;
+  }) all-includes;
 
 in
 
@@ -265,59 +335,78 @@ in
     };
 
     languages = lib.mkOption {
-      default = [ "rust" "python" "c" "cpp" "nix" "java" "r" "txt" ];
+      default = [
+        "rust"
+        "python"
+        "c"
+        "cpp"
+        "nix"
+        "java"
+        "r"
+        "txt"
+      ];
       type = lib.types.listOf lib.types.str;
       description = "Language packs to generate";
     };
 
     includes = lib.mkOption {
-      default = [ "git" "overseer" ];
+      default = [
+        "git"
+        "overseer"
+      ];
       type = lib.types.listOf lib.types.str;
       description = "Include modules to generate";
     };
 
     package = lib.mkOption {
       default = forge-binary;
-      type = lib.types.package;
+      type = lib.types.nullOr lib.types.package;
       description = "forge binary package";
     };
   };
 
-  config = lib.mkIf config.forge.enable {
-    let cfg = config.forge;
+  # FIX: Removed the invalid `let` assignment from inside the attrset
+  config = lib.mkIf cfg.enable {
 
-    home.packages = [ cfg.package ];
+    home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
     home.sessionVariables = {
-      FORGE_SYNC_BASE    = cfg.syncBase;
-      FORGE_EDITOR       = cfg.editor;
-      FORGE_GITHUB_USER  = cfg.githubUser;
-      FORGE_TMUX_BINARY  = cfg.tmuxBinary;
+      FORGE_SYNC_BASE = cfg.syncBase;
+      FORGE_EDITOR = cfg.editor;
+      FORGE_GITHUB_USER = cfg.githubUser;
+      FORGE_TMUX_BINARY = cfg.tmuxBinary;
 
-      FORGE_LANG_DIR = pkgs.runCommand "forge-languages" {
-        preferLocalBuild = true;
-        allowSubstitutes = false;
-      } ''
-        mkdir -p $out
-        ${lib.concatMapStrings (lang: ''
-          mkdir -p $out/${lang}
-          cp ${lang-files.${lang}."flake.nix"} $out/${lang}/
-          cp ${lang-files.${lang}."setup.sh"}  $out/${lang}/
-          cp ${lang-files.${lang}."lang.wl"}   $out/${lang}/
-        '') cfg.languages}
-      '';
+      FORGE_LANG_DIR =
+        pkgs.runCommand "forge-languages"
+          {
+            preferLocalBuild = true;
+            allowSubstitutes = false;
+          }
+          ''
+            mkdir -p $out
+            ${lib.concatMapStrings (lang: ''
+              mkdir -p $out/${lang}
+              cp ${lang-files.${lang}."flake.nix"} $out/${lang}/
+              cp ${lang-files.${lang}."setup.sh"}  $out/${lang}/
+              cp ${lang-files.${lang}."lang.wl"}   $out/${lang}/
+            '') cfg.languages}
+          '';
 
-      FORGE_INCLUDE_DIR = pkgs.runCommand "forge-includes" {
-        preferLocalBuild = true;
-        allowSubstitutes = false;
-      } ''
-        mkdir -p $out
-        ${lib.concatMapStrings (inc: ''
-          mkdir -p $out/${inc}
-          cp ${include-files.${inc}."include.wl"} $out/${inc}/
-          cp ${include-files.${inc}."setup.sh"}  $out/${inc}/
-        '') cfg.includes}
-      '';
+      FORGE_INCLUDE_DIR =
+        pkgs.runCommand "forge-includes"
+          {
+            preferLocalBuild = true;
+            allowSubstitutes = false;
+          }
+          ''
+            mkdir -p $out
+            ${lib.concatMapStrings (inc: ''
+              mkdir -p $out/${inc}
+              cp ${include-files.${inc}."include.wl"} $out/${inc}/
+              cp ${include-files.${inc}."setup.sh"}  $out/${inc}/
+            '') cfg.includes}
+          '';
     };
   };
 }
+
