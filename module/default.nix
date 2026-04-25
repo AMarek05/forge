@@ -74,7 +74,14 @@ let
   };
 
   all-languages = {
-    inherit rust-lang python-lang c-lang cpp-lang java-lang nix-lang r-lang txt-lang;
+    rust = rust-lang;
+    python = python-lang;
+    c = c-lang;
+    cpp = cpp-lang;
+    java = java-lang;
+    nix = nix-lang;
+    r = r-lang;
+    txt = txt-lang;
   };
 
   # ─── Include definitions ─────────────────────────────────────────────────────
