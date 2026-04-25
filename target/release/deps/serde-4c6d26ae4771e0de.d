@@ -1,0 +1,14 @@
+/var/lib/openclaw/workspace/projects/sync-launcher/target/release/deps/serde-4c6d26ae4771e0de.d: /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /var/lib/openclaw/workspace/projects/sync-launcher/target/release/build/serde-e60b699af88ee2e5/out/private.rs
+
+/var/lib/openclaw/workspace/projects/sync-launcher/target/release/deps/libserde-4c6d26ae4771e0de.rlib: /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /var/lib/openclaw/workspace/projects/sync-launcher/target/release/build/serde-e60b699af88ee2e5/out/private.rs
+
+/var/lib/openclaw/workspace/projects/sync-launcher/target/release/deps/libserde-4c6d26ae4771e0de.rmeta: /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /var/lib/openclaw/workspace/projects/sync-launcher/target/release/build/serde-e60b699af88ee2e5/out/private.rs
+
+/var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/var/lib/openclaw/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/var/lib/openclaw/workspace/projects/sync-launcher/target/release/build/serde-e60b699af88ee2e5/out/private.rs:
+
+# env-dep:OUT_DIR=/var/lib/openclaw/workspace/projects/sync-launcher/target/release/build/serde-e60b699af88ee2e5/out

@@ -2,15 +2,15 @@
   description = "forge — tmux sessionizer with includes and overseer integration";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-    rust-overlay.url = "github:oxalica/rust-overlay";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-mozilla.url = "github:mozilla/nixpkgs-mozilla";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils }:
+  outputs = { self, nixpkgs, nixpkgs-mozilla, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import rust-overlay { inherit system; }) ];
+        overlays = [ nixpkgs-mozilla.overlay ];
         pkgs = import nixpkgs { inherit system overlays; };
       in
       {
