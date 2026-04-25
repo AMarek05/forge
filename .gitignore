@@ -18,3 +18,5 @@ result-*
 
 # Build artifacts
 *.bin
+
+forge
