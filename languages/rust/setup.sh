@@ -14,7 +14,7 @@ if [ "$FORGE_DRY_RUN" = "1" ]; then
     echo "[dry-run] mkdir -p $FORGE_PROJECT_PATH"
     echo "[dry-run] write .envrc"
     echo "[dry-run] write flake.nix"
-    echo "[dry-run] nix develop . -c cargo init ."
+    echo "[dry-run] direnv exec . -- cargo init ."
     echo "[dry-run] direnv allow"
     exit 0
 fi
@@ -31,9 +31,8 @@ cat > .envrc << 'EOF'
 use flake
 EOF
 
-# Init via nix develop so cargo is available even without global install
-if [ ! -f Cargo.toml ]; then
-    nix develop . -c cargo init .
-fi
-
+# Allow direnv to load the flake environment, then run cargo init
 direnv allow
+if [ ! -f Cargo.toml ]; then
+    direnv exec . -- cargo init .
+fi
