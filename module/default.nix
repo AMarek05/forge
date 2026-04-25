@@ -362,22 +362,6 @@ in
       cfg.package
     ];
 
-    home.file = {
-      ".local/state/forge".source =
-        pkgs.runCommand "forge-state" {
-          preferLocalBuild = true;
-          allowSubstitutes = false;
-        } ''
-          mkdir -p $out
-          echo '${cfg.syncBase}' > $out/sync_base
-          echo '${cfg.editor}' > $out/editor
-          ${lib.optionalString (cfg.githubUser != null) ''
-            echo '${cfg.githubUser}' > $out/github_user
-          ''}
-          echo '${cfg.tmuxBinary}' > $out/tmux_binary
-        '';
-    };
-
     home.activation.forgeFiles = lib.hm.dag.entryAfter ["homeEnvironment"] ''
       # Create forge directories
       mkdir -p $HOME/.local/state/forge/languages
