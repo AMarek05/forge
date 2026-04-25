@@ -4,7 +4,7 @@ use anyhow::Result;
 
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod};
-use crate::tmux::switch_or_create;
+use crate::commands::tmux::switch_or_create;
 
 pub fn run(name: Option<String>, setup: bool) -> Result<()> {
     let config = ForgeConfig::load()?;

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 
 use crate::config::ForgeConfig;
-use crate::include::IncludeEntry;
+use crate::commands::include::IncludeEntry;
 
 pub fn run(list: bool, name: Option<String>) -> Result<()> {
     if list {
