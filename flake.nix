@@ -7,8 +7,16 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-mozilla, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nixpkgs-mozilla,
+      flake-utils,
+    }:
+    # 1. System-specific outputs (packages, shells, etc.)
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlays = [ nixpkgs-mozilla.overlay ];
         pkgs = import nixpkgs { inherit system overlays; };
@@ -29,15 +37,17 @@
             clippy
           ];
         };
-
-        # Home-manager module for use in user configurations
-        # Usage in home-manager flake:
-        #   imports = [ inputs.forge.homeManagerModules.${system} ];
-        homeManagerModules = import ./module {
-          lib = nixpkgs.lib;
-          inherit pkgs;
-          forge = self.packages.${system}.default;
-        };
       }
-    );
+    )
+    # 2. Merge with system-agnostic outputs (modules)
+    // {
+      homeManagerModules.default =
+        { pkgs, ... }:
+        {
+          imports = [ ./module ];
+
+          _module.args.forgePkg = self.packages.${pkgs.system}.default;
+        };
+    };
 }
+
