@@ -1,0 +1,16 @@
+{
+  description = "{{PROJECT_NAME}}";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+  };
+
+  outputs = { self, nixpkgs }: {
+    devShells."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}".default = nixpkgs.legacyPackages."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}".mkShell {
+      buildInputs = with nixpkgs.legacyPackages."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}"; [
+        R
+        rPackages.renv
+      ];
+    };
+  };
+}
