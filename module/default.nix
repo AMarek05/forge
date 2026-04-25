@@ -2,7 +2,7 @@
 # Generates language flakes and include scripts at module eval time,
 # ships them to the Nix store, and sets up the forge binary wrapper.
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs ? {}, ... }:
 
 let
   cfg = config.forge;

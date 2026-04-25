@@ -29,6 +29,14 @@
             clippy
           ];
         };
+
+        # Home-manager module for use in user configurations
+        # Usage in home-manager flake:
+        #   imports = [ inputs.forge.lib.homeManagerModules.${system} ];
+        lib.homeManagerModules = import ./module {
+          inherit pkgs;
+          forge = self.packages.${system}.default;
+        };
       }
     );
 }
