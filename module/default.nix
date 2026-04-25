@@ -37,8 +37,8 @@ let
     description = "C++ project with cmake";
     path = "Code/C++";
     direnv = "use flake";
-    requires = [ "cmake" "g++" ];
-    buildInputs = with pkgs; [ cmake g++ make ];
+    requires = [ "cmake" "clang" ];
+    buildInputs = with pkgs; [ cmake clang ];
   };
 
   java-lang = {
