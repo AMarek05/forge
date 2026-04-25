@@ -362,32 +362,35 @@ in
       cfg.package
     ];
 
-    home.activation.forgeFiles = lib.hm.dag.entryAfter ["homeEnvironment"] ''
-      # Create forge directories
-      mkdir -p $HOME/.local/state/forge/languages
-      mkdir -p $HOME/.local/state/forge/includes
-
-      # Copy language files
-      ${lib.concatMapStrings (lang: ''
-        mkdir -p $HOME/.local/state/forge/languages/${lang}
-        cp ${lang-files.${lang}."flake.nix"} $HOME/.local/state/forge/languages/${lang}/flake.nix
-        cp ${lang-files.${lang}."setup.sh"} $HOME/.local/state/forge/languages/${lang}/setup.sh
-        cp ${lang-files.${lang}."lang.wl"} $HOME/.local/state/forge/languages/${lang}/lang.wl
-      '') cfg.languages}
-
-      # Copy include files
-      ${lib.concatMapStrings (inc: ''
-        mkdir -p $HOME/.local/state/forge/includes/${inc}
-        cp ${include-files.${inc}."include.wl"} $HOME/.local/state/forge/includes/${inc}/include.wl
-        cp ${include-files.${inc}."setup.sh"} $HOME/.local/state/forge/includes/${inc}/setup.sh
-      '') cfg.includes}
-    '';
-
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;
       FORGE_EDITOR = cfg.editor;
-      FORGE_LANG_DIR = "$HOME/.local/state/forge/languages";
-      FORGE_INCLUDE_DIR = "$HOME/.local/state/forge/includes";
+
+      FORGE_LANG_DIR = pkgs.runCommand "forge-languages" {
+        preferLocalBuild = true;
+        allowSubstitutes = false;
+      } ''
+        mkdir -p $out
+        ${lib.concatMapStrings (lang: ''
+          mkdir -p $out/${lang}
+          cp ${lang-files.${lang}."flake.nix"} $out/${lang}/flake.nix
+          cp ${lang-files.${lang}."setup.sh"} $out/${lang}/setup.sh
+          cp ${lang-files.${lang}."lang.wl"} $out/${lang}/lang.wl
+        '') cfg.languages}
+      '';
+
+      FORGE_INCLUDE_DIR = pkgs.runCommand "forge-includes" {
+        preferLocalBuild = true;
+        allowSubstitutes = false;
+      } ''
+        mkdir -p $out
+        ${lib.concatMapStrings (inc: ''
+          mkdir -p $out/${inc}
+          cp ${include-files.${inc}."include.wl"} $out/${inc}/include.wl
+          cp ${include-files.${inc}."setup.sh"} $out/${inc}/setup.sh
+        '') cfg.includes}
+      '';
+
       FORGE_GITHUB_USER = cfg.githubUser;
       FORGE_TMUX_BINARY = cfg.tmuxBinary;
     };
