@@ -207,7 +207,7 @@ let
       render_template() {
         local src="$1"
         local dst="$2"
-        sed "s/{{PROJECT_NAME}}/$''{FORGE_PROJECT_NAME}/g" "$src" > "$dst"
+        sed "s/{{PROJECT_NAME}}/$${FORGE_PROJECT_NAME}/g" "$src" > "$dst"
       }
 
       if [ "$FORGE_DRY_RUN" = "1" ]; then
