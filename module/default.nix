@@ -2,7 +2,7 @@
 # Generates language flakes and include scripts at module eval time,
 # ships them to the Nix store, and sets up the forge binary wrapper.
 
-{ config, lib, pkgs, inputs ? {}, ... }:
+{ config, lib, pkgs, forge, ... }:
 
 let
   cfg = config.forge;
@@ -302,8 +302,8 @@ let
     };
   }) {} all-includes;
 
-  # The forge package (from the project's nix/package.nix)
-  forge-binary = pkgs.callPackage ../nix/package.nix { };
+  # The forge package — passed in from the flake's homeManagerModules export
+  forge-binary = forge;
 
 in
 
