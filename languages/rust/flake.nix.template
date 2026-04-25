@@ -8,15 +8,19 @@
   outputs = { self, nixpkgs }:
     let
       system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
     in
     {
-      devShells.${system}.default = nixpkgs.legacyPackages.${system}.mkShell {
-        buildInputs = with nixpkgs.legacyPackages.${system}; [
+      packages.${system}.default = pkgs.mkShell {
+        name = "{{PROJECT_NAME}}";
+        buildInputs = with pkgs; [
           rustc
           cargo
           rustfmt
           clippy
         ];
       };
+
+      devShells.${system}.default = self.packages.${system}.default;
     };
 }
