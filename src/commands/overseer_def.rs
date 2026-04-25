@@ -19,7 +19,7 @@ pub fn run(name: String) -> Result<()> {
         .with_context(|| format!("failed to read {}", wl_path.display()))?;
 
     let build_cmd = wl.build.as_ref()
-        .or_else(|| Some(&project.build).and_then(|b| b.as_ref()))
+        .or_else(|| Some(&project.build).and_then(|b: &Option<String>| b.as_ref()))
         .map(|s: &String| s.as_str())
         .unwrap_or("nix build");
 

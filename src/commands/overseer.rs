@@ -1,8 +1,8 @@
-//! `forge overseer` — overseer integration helpers.
+//! `forge overseer` — run overseer tasks for a project.
 
 use anyhow::Result;
 
-pub fn run() -> Result<()> {
-    println!("overseer not implemented");
+pub fn run(name: Option<String>, setup: bool) -> Result<()> {
+    // TODO: implement overseer integration
     Ok(())
 }

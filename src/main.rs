@@ -3,10 +3,10 @@ use std::path::PathBuf;
 mod cli;
 mod commands;
 mod config;
-// mod include;  // re-exported via commands/mod.rs
+mod include;
 mod index;
 mod paths;
-// mod tmux;     // re-exported via commands/mod.rs
+mod tmux;
 mod wl_parser;
 
 use anyhow::Result;
