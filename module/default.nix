@@ -103,14 +103,6 @@ let
     overseer = overseer-include;
   };
 
-  # ─── Nixpkgs instance for flake generation ─────────────────────────────────
-
-  # Use nixos-unstable for all generated flakes
-  nixpkgs-for-flakes = import (fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/tarball/nixos-unstable";
-    sha256 = "0000000000000000000000000000000000000000000000000000";
-  }) { system = "x86_64-linux"; };
-
   # ─── Flake generation ────────────────────────────────────────────────────────
 
   generate-lang-flake = name: lang:
@@ -313,24 +305,11 @@ let
   # The forge package (from the project's nix/package.nix)
   forge-binary = pkgs.callPackage ../nix/package.nix { };
 
-  # ─── Runtime config file ────────────────────────────────────────────────────
-
-  runtime-config = pkgs.writeTextFile {
-    name = "forge-runtime-config";
-    destination = "/config";
-    text = ''
-      FORGE_SYNC_BASE="${cfg.syncBase}"
-      FORGE_EDITOR="${cfg.editor}"
-      FORGE_GITHUB_USER="${cfg.githubUser}"
-      FORGE_TMUX_BINARY="tmux"
-    '';
-  };
-
 in
 
 {
   options.forge = {
-    enable = lib.mkEnableOption "forge - tmux sessionizer with includes and overseer integration";
+    enable = lib.mkEnableOption "forge — tmux sessionizer with includes and overseer integration";
 
     syncBase = lib.mkOption {
       default = "${config.home.homeDirectory}/sync";
@@ -384,7 +363,7 @@ in
     ];
 
     home.file = {
-      "${config.home.homeDirectory}/.local/state/forge".source =
+      ".local/state/forge".source =
         pkgs.runCommand "forge-state" {
           preferLocalBuild = true;
           allowSubstitutes = false;
@@ -397,45 +376,34 @@ in
           ''}
           echo '${cfg.tmuxBinary}' > $out/tmux_binary
         '';
-
-      "${config.home.homeDirectory}/.local/state/forge/languages".source =
-        pkgs.runCommand "forge-languages" {
-          preferLocalBuild = true;
-          allowSubstitutes = false;
-        } ''
-          mkdir -p $out
-          ${lib.concatMapStrings (lang: ''
-            lang_name="${lang}"
-            lang_dir="$out/$lang_name"
-            mkdir -p $lang_dir
-            ${lib.concatMapStrings (file: ''
-              cp ${lang-files.${lang}."${file}"} $lang_dir/"${file}"
-            '') [ "flake.nix" "setup.sh" "lang.wl" ]}
-          '') cfg.languages}
-        '';
-
-      "${config.home.homeDirectory}/.local/state/forge/includes".source =
-        pkgs.runCommand "forge-includes" {
-          preferLocalBuild = true;
-          allowSubstitutes = false;
-        } ''
-          mkdir -p $out
-          ${lib.concatMapStrings (inc: ''
-            inc_name="${inc}"
-            inc_dir="$out/$inc_name"
-            mkdir -p $inc_dir
-            ${lib.concatMapStrings (file: ''
-              cp ${include-files.${inc}."${file}"} $inc_dir/"${file}"
-            '') [ "include.wl" "setup.sh" ]}
-          '') cfg.includes}
-        '';
     };
+
+    home.activationScripts.forge-files = lib.hm.dag.entryAfter ["homeEnvironment"] ''
+      # Create forge directories
+      mkdir -p $HOME/.local/state/forge/languages
+      mkdir -p $HOME/.local/state/forge/includes
+
+      # Copy language files
+      ${lib.concatMapStrings (lang: ''
+        mkdir -p $HOME/.local/state/forge/languages/${lang}
+        cp ${lang-files.${lang}."flake.nix"} $HOME/.local/state/forge/languages/${lang}/flake.nix
+        cp ${lang-files.${lang}."setup.sh"} $HOME/.local/state/forge/languages/${lang}/setup.sh
+        cp ${lang-files.${lang}."lang.wl"} $HOME/.local/state/forge/languages/${lang}/lang.wl
+      '') cfg.languages}
+
+      # Copy include files
+      ${lib.concatMapStrings (inc: ''
+        mkdir -p $HOME/.local/state/forge/includes/${inc}
+        cp ${include-files.${inc}."include.wl"} $HOME/.local/state/forge/includes/${inc}/include.wl
+        cp ${include-files.${inc}."setup.sh"} $HOME/.local/state/forge/includes/${inc}/setup.sh
+      '') cfg.includes}
+    '';
 
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;
       FORGE_EDITOR = cfg.editor;
-      FORGE_LANG_DIR = "${config.home.homeDirectory}/.local/state/forge/languages";
-      FORGE_INCLUDE_DIR = "${config.home.homeDirectory}/.local/state/forge/includes";
+      FORGE_LANG_DIR = "$HOME/.local/state/forge/languages";
+      FORGE_INCLUDE_DIR = "$HOME/.local/state/forge/includes";
       FORGE_GITHUB_USER = cfg.githubUser;
       FORGE_TMUX_BINARY = cfg.tmuxBinary;
     };
