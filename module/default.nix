@@ -378,7 +378,7 @@ in
         '';
     };
 
-    home.activationScripts.forge-files = lib.hm.dag.entryAfter ["homeEnvironment"] ''
+    home.activation.forgeFiles = lib.hm.dag.entryAfter ["homeEnvironment"] ''
       # Create forge directories
       mkdir -p $HOME/.local/state/forge/languages
       mkdir -p $HOME/.local/state/forge/includes
