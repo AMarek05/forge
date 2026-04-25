@@ -26,8 +26,8 @@ fn main() -> Result<()> {
             commands::sync(),
         cli::Command::Cd { name, print } =>
             commands::cd(name, print),
-        cli::Command::Session { name, setup } =>
-            commands::session(name, setup),
+        cli::Command::Session { name, setup, open } =>
+            commands::session(name, setup, open),
         cli::Command::Pick { tags } =>
             commands::pick(tags),
         cli::Command::Setup { name, dry_run } =>

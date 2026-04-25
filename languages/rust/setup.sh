@@ -12,9 +12,9 @@ render_template() {
 
 if [ "$FORGE_DRY_RUN" = "1" ]; then
     echo "[dry-run] mkdir -p $FORGE_PROJECT_PATH"
-    echo "[dry-run] nix develop . -c cargo init $FORGE_PROJECT_PATH"
     echo "[dry-run] write .envrc"
     echo "[dry-run] write flake.nix"
+    echo "[dry-run] nix shell .#default -c cargo init ."
     echo "[dry-run] direnv allow"
     exit 0
 fi
@@ -23,17 +23,17 @@ mkdir -p "$FORGE_PROJECT_PATH"
 
 cd "$FORGE_PROJECT_PATH"
 
+# Write flake.nix first (needed for nix shell)
+render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
+
 # Write .envrc
 cat > .envrc << 'EOF'
 use flake
 EOF
 
-# Write flake.nix (from template)
-render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
-
-# Init via nix develop so cargo is available even without global install
+# Use nix shell to get cargo without evaluating the project flake first
 if [ ! -f Cargo.toml ]; then
-    nix develop . -c cargo init .
+    nix shell .#default -c cargo init .
 fi
 
 direnv allow

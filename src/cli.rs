@@ -87,6 +87,10 @@ pub enum Command {
         /// Run setup scripts in the session
         #[arg(long)]
         setup: bool,
+
+        /// Open project in $EDITOR after switching session
+        #[arg(long)]
+        open: bool,
     },
 
     /// Interactive fzf session picker

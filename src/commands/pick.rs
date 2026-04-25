@@ -129,15 +129,29 @@ pub fn run(tags: Option<String>) -> Result<()> {
         }
         "ctrl-e" => {
             // Edit .wl in $EDITOR
-            let wl_path = format!("{}/.wl", project_path);
+            let wl_path = std::path::PathBuf::from(project_path).join(".wl");
+            std::env::set_current_dir(project_path)?;
+            let editor = &config.editor;
+            let cmd = if editor.contains("nvim") {
+                format!("{} -c Oil", editor)
+            } else {
+                format!("{} {}", editor, wl_path.to_string_lossy())
+            };
             Command::new("sh")
-                .args(["-c", &format!("{} {}", config.editor, wl_path)])
+                .args(["-c", &cmd])
                 .status()?;
         }
         "ctrl-o" => {
             // Open project directory in $EDITOR
+            std::env::set_current_dir(project_path)?;
+            let editor = &config.editor;
+            let cmd = if editor.contains("nvim") {
+                format!("{} -c Oil", editor)
+            } else {
+                editor.clone()
+            };
             Command::new("sh")
-                .args(["-c", &format!("{} {}", config.editor, project_path)])
+                .args(["-c", &cmd])
                 .status()?;
         }
         "ctrl-d" => {

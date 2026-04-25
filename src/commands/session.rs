@@ -1,18 +1,19 @@
 //! `forge session` — switch to or create a tmux session.
 
+use std::process::Command;
+
 use anyhow::Result;
 
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod};
 use crate::tmux::switch_or_create;
 
-pub fn run(name: Option<String>, setup: bool) -> Result<()> {
+pub fn run(name: Option<String>, setup: bool, open: bool) -> Result<()> {
     let config = ForgeConfig::load()?;
 
     let name = if let Some(ref n) = name {
         n.clone()
     } else {
-        // Interactive pick — but session just takes a name
         anyhow::bail!("session requires a project name");
     };
 
@@ -24,20 +25,23 @@ pub fn run(name: Option<String>, setup: bool) -> Result<()> {
     let session_name = format!("forge-{}", name);
 
     if setup {
-        // Run setup scripts first
-        run_project_setup(&project.path.to_string_lossy(), &config)?;
+        run_project_setup(&project.path.to_string_lossy())?;
     }
 
     switch_or_create(&session_name, &project.path.to_string_lossy(), &config.tmux_binary)?;
 
-    // Update last_opened
+    if open {
+        open_project(&project.path, &config)?;
+    }
+
     update_last_opened(&name)?;
 
     Ok(())
 }
 
-fn run_project_setup(path: &str, _config: &ForgeConfig) -> Result<()> {
-    std::process::Command::new("direnv")
+fn run_project_setup(path: &str) -> Result<()> {
+    std::env::set_current_dir(path)?;
+    Command::new("direnv")
         .arg("allow")
         .current_dir(path)
         .status()
@@ -45,9 +49,23 @@ fn run_project_setup(path: &str, _config: &ForgeConfig) -> Result<()> {
     Ok(())
 }
 
+fn open_project(path: &std::path::Path, config: &ForgeConfig) -> Result<()> {
+    std::env::set_current_dir(path)?;
+    let editor = &config.editor;
+    let cmd = if editor.contains("nvim") {
+        format!("{} -c Oil", editor)
+    } else {
+        editor.clone()
+    };
+    Command::new("sh")
+        .args(["-c", &cmd])
+        .status()?;
+    Ok(())
+}
+
 fn update_last_opened(name: &str) -> Result<()> {
     use std::time::{SystemTime, UNIX_EPOCH};
-    use crate::index::{self as index_mod, ProjectIndex};
+    use crate::index::{self as index_mod};
 
     let mut index = index_mod::load_index()?;
     let now = SystemTime::now()
