@@ -14,7 +14,7 @@
       nixpkgs-mozilla,
       flake-utils,
     }:
-    # 1. System-specific outputs (packages, shells, etc.)
+    # 1. System-specific outputs
     flake-utils.lib.eachDefaultSystem (
       system:
       let
@@ -22,13 +22,14 @@
         pkgs = import nixpkgs { inherit system overlays; };
       in
       {
-        packages = {
-          default = pkgs.callPackage ./nix/package.nix { };
-          forge = self.packages.${system}.default;
+        # Cleaned up package definition
+        packages = rec {
+          forge = pkgs.callPackage ./nix/package.nix { };
+          default = forge;
         };
 
         devShells.default = pkgs.mkShell {
-          inputsFrom = [ self.packages.${system}.default ];
+          inputsFrom = [ self.packages.${system}.forge ];
           buildInputs = with pkgs; [
             rustc
             cargo
@@ -39,15 +40,16 @@
         };
       }
     )
-    # 2. Merge with system-agnostic outputs (modules)
     // {
+      # 2. System-agnostic Home Manager Module
       homeManagerModules.default =
         { pkgs, ... }:
         {
-          imports = [ ./module ];
+          imports = [ ./module ]; # Points to your module.nix file/directory
 
-          _module.args.forgePkg = self.packages.${pkgs.system}.default;
+          # We set the default value for the option directly in the config
+          # to ensure it's "batteries included"
+          forge.package = nixpkgs.lib.mkDefault self.packages.${pkgs.stdenv.hostPlatform.system}.forge;
         };
     };
 }
-

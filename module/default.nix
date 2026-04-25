@@ -14,7 +14,7 @@ let
 
   # FIX: Avoid naming the module argument `forge` to prevent collisions with `config.forge`.
   # Pass your package via `extraSpecialArgs = { forgePkg = ...; }` in your flake setup.
-  forge-binary = args.forgePkg or pkgs.forge or null;
+  forge-binary = args.forgePkg or null;
 
   # ─── Language definitions ───────────────────────────────────────────────────
 
