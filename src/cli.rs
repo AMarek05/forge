@@ -69,10 +69,14 @@ pub enum Command {
     /// Re-scan FORGE_SYNC_BASE and rebuild the index
     Sync,
 
-    /// Print project path to stdout
+    /// cd into project directory. Use --print to print path only.
     Cd {
         /// Project name
         name: String,
+
+        /// Print path instead of cd directive
+        #[arg(long)]
+        print: bool,
     },
 
     /// Switch to or create a tmux session

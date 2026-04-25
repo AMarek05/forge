@@ -24,8 +24,8 @@ fn main() -> Result<()> {
             commands::list(tags),
         cli::Command::Sync =>
             commands::sync(),
-        cli::Command::Cd { name } =>
-            commands::cd(name),
+        cli::Command::Cd { name, print } =>
+            commands::cd(name, print),
         cli::Command::Session { name, setup } =>
             commands::session(name, setup),
         cli::Command::Pick { tags } =>

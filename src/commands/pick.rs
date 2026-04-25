@@ -101,6 +101,7 @@ pub fn run(tags: Option<String>) -> Result<()> {
             // Check if session exists
             if Command::new(tmux_bin)
                 .args(["has-session", "-t", &session_name])
+                .stderr(Stdio::null())
                 .status()
                 .map(|s| s.success())
                 .unwrap_or(false)

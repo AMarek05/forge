@@ -1,4 +1,4 @@
-//! `forge open` — open project directory in $EDITOR.
+//! `forge open` — cd into project directory and open $EDITOR.
 
 use std::process::Command;
 
@@ -15,8 +15,9 @@ pub fn run(name: String) -> Result<()> {
         .find(|p| p.name == name)
         .ok_or_else(|| anyhow::anyhow!("project '{}' not found in index", name))?;
 
+    std::env::set_current_dir(&project.path)?;
     Command::new("sh")
-        .args(["-c", &format!("{} {}", config.editor, project.path.to_string_lossy())])
+        .args(["-c", &config.editor])
         .status()?;
 
     Ok(())
