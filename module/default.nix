@@ -14,7 +14,7 @@ let
     path = "Code/Rust";
     direnv = "use flake";
     requires = [ "cargo" "direnv" ];
-    buildInputs = with pkgs; [ rustc cargo rustfmt clippy ];
+    buildInputs = [ "rustc" "cargo" "rustfmt" "clippy" ];
   };
 
   python-lang = {
@@ -22,7 +22,7 @@ let
     path = "Code/Python";
     direnv = "use flake";
     requires = [ "poetry" "direnv" ];
-    buildInputs = with pkgs; [ python311 poetry ];
+    buildInputs = [ "python311" "poetry" ];
   };
 
   c-lang = {
@@ -30,7 +30,7 @@ let
     path = "Code/C";
     direnv = "use flake";
     requires = [ "gcc" "make" ];
-    buildInputs = with pkgs; [ gcc make ];
+    buildInputs = [ "gcc" "make" ];
   };
 
   cpp-lang = {
@@ -38,7 +38,7 @@ let
     path = "Code/C++";
     direnv = "use flake";
     requires = [ "cmake" "clang" ];
-    buildInputs = with pkgs; [ cmake clang ];
+    buildInputs = [ "cmake" "clang" ];
   };
 
   java-lang = {
@@ -46,7 +46,7 @@ let
     path = "Code/Java";
     direnv = "use flake";
     requires = [ "maven" "java" ];
-    buildInputs = with pkgs; [ maven jdk17 ];
+    buildInputs = [ "maven" "jdk17" ];
   };
 
   nix-lang = {
@@ -54,7 +54,7 @@ let
     path = "Code/Nix";
     direnv = "use flake";
     requires = [ "nix" ];
-    buildInputs = with pkgs; [ nix ];
+    buildInputs = [ "nix" ];
   };
 
   r-lang = {
@@ -62,7 +62,7 @@ let
     path = "Code/R";
     direnv = "use flake";
     requires = [ "R" "renv" ];
-    buildInputs = with pkgs; [ R rPackages.renv ];
+    buildInputs = [ "R" "renv" ];
   };
 
   txt-lang = {
@@ -330,7 +330,7 @@ in
 
 {
   options.forge = {
-    enable = lib.mkEnableOption "forge — tmux sessionizer with includes and overseer integration";
+    enable = lib.mkEnableOption "forge - tmux sessionizer with includes and overseer integration";
 
     syncBase = lib.mkOption {
       default = "${config.home.homeDirectory}/sync";
