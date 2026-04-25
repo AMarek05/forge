@@ -18,8 +18,8 @@ rustPlatform.buildRustPackage {
 
   postInstall = ''
     mkdir -p $out/share/forge/languages
-    mkdir -p $out/share/forge/docs
+    mkdir -p $out/share/forge/includes
     cp -r languages/* $out/share/forge/languages/
-    cp -r docs/* $out/share/forge/docs/
+    cp -r includes/* $out/share/forge/includes/
   '';
 }
