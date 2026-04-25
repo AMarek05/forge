@@ -30,13 +30,12 @@
           ];
         };
 
-        lib = nixpkgs.lib;
-
         # Home-manager module for use in user configurations
         # Usage in home-manager flake:
-        #   imports = [ inputs.forge.lib.homeManagerModules.${system} ];
+        #   imports = [ inputs.forge.homeManagerModules.${system} ];
         homeManagerModules = import ./module {
-          inherit lib pkgs;
+          lib = nixpkgs.lib;
+          inherit pkgs;
           forge = self.packages.${system}.default;
         };
       }
