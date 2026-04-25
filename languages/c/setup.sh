@@ -22,12 +22,19 @@ mkdir -p "$FORGE_PROJECT_PATH"
 
 cd "$FORGE_PROJECT_PATH"
 
-# Write .envrc
-cat > .envrc << 'EOF'
-use make
-EOF
-
-# Write flake.nix (from template)
+# Write flake.nix
 render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
+
+# Init git and commit flake.nix so nix develop can see it
+if [ ! -d .git ]; then
+    git init
+    git add flake.nix
+    git commit -m "init"
+fi
+
+# Write .envrc so future sessions get the flake environment via direnv
+cat > .envrc << 'EOF'
+use flake
+EOF
 
 direnv allow

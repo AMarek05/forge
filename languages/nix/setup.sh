@@ -37,19 +37,34 @@ else
   description = "{{PROJECT_NAME}}";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }: {
-    devShells."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}".default = nixpkgs.legacyPackages."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}".mkShell {
-      buildInputs = with nixpkgs.legacyPackages."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}"; [
-        nix
-      ];
+  outputs = { self, nixpkgs }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      packages.${system}.default = pkgs.mkShell {
+        name = "{{PROJECT_NAME}}";
+        buildInputs = with pkgs; [
+          nix
+        ];
+      };
+
+      devShells.${system}.default = self.packages.${system}.default;
     };
-  };
 }
 FLKEOF
     sed -i "s/{{PROJECT_NAME}}/${FORGE_PROJECT_NAME}/g" flake.nix
+fi
+
+# Init git and commit flake.nix so nix develop can see it
+if [ ! -d .git ]; then
+    git init
+    git add flake.nix
+    git commit -m "init"
 fi
 
 direnv allow

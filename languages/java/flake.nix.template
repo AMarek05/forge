@@ -2,15 +2,23 @@
   description = "{{PROJECT_NAME}}";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }: {
-    devShells."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}".default = nixpkgs.legacyPackages."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}".mkShell {
-      buildInputs = with nixpkgs.legacyPackages."${builtins.replaceStrings ["$"] [""] "$\{SYSTEM}"}"; [
-        maven
-        jdk17
-      ];
+  outputs = { self, nixpkgs }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      packages.${system}.default = pkgs.mkShell {
+        name = "{{PROJECT_NAME}}";
+        buildInputs = with pkgs; [
+          maven
+          jdk17
+        ];
+      };
+
+      devShells.${system}.default = self.packages.${system}.default;
     };
-  };
 }
