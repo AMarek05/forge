@@ -1,0 +1,20 @@
+# Nix
+result
+result-*
+*.drv
+
+# Rust
+/target/
+**/target/
+
+# Editor
+*.swp
+*.swo
+.DS_Store
+
+# Local env
+.env
+.env.local
+
+# Build artifacts
+*.bin
