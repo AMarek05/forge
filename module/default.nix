@@ -92,7 +92,8 @@ let
   };
 
   all-includes = {
-    inherit git-include overseer-include;
+    git = git-include;
+    overseer = overseer-include;
   };
 
   # ─── Nixpkgs instance for flake generation ─────────────────────────────────
