@@ -11,12 +11,12 @@ mkdir -p "$HOME/.forge"
 cat > "$HOME/.forge/config.sh" << 'EOF'
 export FORGE_SYNC_BASE="$SYNC_BASE"
 export FORGE_BASE="$TEST_DIR/.forge"
-export FORGE_LANG_DIR="$($FORGE --print-lang-dir)"
+export FORGE_LANG_DIR="$(dirname "$FORGE")/../share/forge/languages"
 EOF
 
 export FORGE_SYNC_BASE="$SYNC_BASE"
 export FORGE_BASE="$TEST_DIR/.forge"
-export FORGE_LANG_DIR="$($FORGE --print-lang-dir)"
+export FORGE_LANG_DIR="$(dirname "$FORGE")/../share/forge/languages"
 
 cleanup() { rm -rf "$TEST_DIR"; }
 trap cleanup EXIT
