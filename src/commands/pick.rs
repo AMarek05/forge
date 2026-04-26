@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 use anyhow::Result;
 
 use crate::config::ForgeConfig;
-use crate::index::{self as index_mod, ProjectIndex};
+use crate::index::{self as index_mod};
 
 pub fn run(tags: Option<String>) -> Result<()> {
     let config = ForgeConfig::load()?;

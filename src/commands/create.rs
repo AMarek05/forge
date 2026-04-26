@@ -45,7 +45,7 @@ fn now_iso() -> String {
     format!("{}", now)
 }
 
-pub fn run(name: String, lang: String, no_open: bool, setup: bool, include: Option<String>, path: Option<String>, run: Option<String>, editor: bool, dry_run: bool) -> Result<()> {
+pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Option<String>, path: Option<String>, run: Option<String>, editor: bool, dry_run: bool) -> Result<()> {
     let config = ForgeConfig::load()?;
     let lang = load_language(&lang, &config)?;
 

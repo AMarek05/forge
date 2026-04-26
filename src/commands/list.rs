@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 
-use crate::index::{self as index_mod, ProjectIndex};
+use crate::index::{self as index_mod};
 
 pub fn run(tags: Option<String>) -> Result<()> {
     let index = index_mod::load_index()?;
