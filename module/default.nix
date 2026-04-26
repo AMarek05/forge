@@ -201,7 +201,7 @@ let
             cat > .envrc << 'ENVEOF'
             use flake
             ENVEOF
-            if [ ! -f Cargo.toml ]; then nix develop . -c cargo init .; fi
+            if [ ! -f Cargo.toml ]; then nix develop . -c cargo init . || true; fi
             direnv allow
           ''
         else if name == "python" then
@@ -213,7 +213,7 @@ let
             cat > .envrc << 'ENVEOF'
             use flake
             ENVEOF
-            if [ ! -f pyproject.toml ]; then nix develop . -c poetry init --name "$FORGE_PROJECT_NAME" --quiet; fi
+            if [ ! -f pyproject.toml ]; then nix develop . -c poetry init --name "$FORGE_PROJECT_NAME" --quiet || true; fi
             direnv allow
           ''
         else
