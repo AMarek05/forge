@@ -23,6 +23,7 @@ let
     path = "Code/Rust";
     direnv = "use flake";
     requires = [
+      "git"
       "cargo"
       "direnv"
     ];
@@ -39,6 +40,7 @@ let
     path = "Code/Python";
     direnv = "use flake";
     requires = [
+      "git"
       "poetry"
       "direnv"
     ];
@@ -53,6 +55,7 @@ let
     path = "Code/C";
     direnv = "use flake";
     requires = [
+      "git"
       "gcc"
       "make"
     ];
@@ -67,6 +70,7 @@ let
     path = "Code/C++";
     direnv = "use flake";
     requires = [
+      "git"
       "cmake"
       "clang"
     ];
@@ -81,6 +85,7 @@ let
     path = "Code/Java";
     direnv = "use flake";
     requires = [
+      "git"
       "maven"
       "java"
     ];
@@ -94,7 +99,7 @@ let
     description = "Nix flake project";
     path = "Code/Nix";
     direnv = "use flake";
-    requires = [ "nix" ];
+    requires = [ "git" "nix" ];
     buildInputs = [ "nix" ];
   };
 
@@ -103,6 +108,7 @@ let
     path = "Code/R";
     direnv = "use flake";
     requires = [
+      "git"
       "R"
       "renv"
     ];
@@ -116,7 +122,7 @@ let
     description = "Plain text notes — no flake, no toolchain";
     path = "Notes/txt";
     direnv = "none";
-    requires = [ ];
+    requires = [ "git" ];
     buildInputs = [ ];
   };
 
