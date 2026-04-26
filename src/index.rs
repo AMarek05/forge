@@ -59,6 +59,10 @@ pub fn load_index_from(path: &PathBuf) -> Result<ProjectIndex> {
 
 pub fn save_index(index: &ProjectIndex) -> Result<()> {
     let index_path = index_path()?;
+    if let Some(parent) = index_path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create dir {}", parent.display()))?;
+    }
     save_index_to(index, &index_path)
 }
 
