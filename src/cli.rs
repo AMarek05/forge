@@ -6,9 +6,14 @@ use clap::{Parser, Subcommand};
 #[command(
     name = "forge",
     about = "tmux sessionizer backed by ~/sync with plugin-style includes",
+    long_about = None,
     version = "0.1.0"
 )]
 pub struct Cli {
+    /// Generate shell completions (e.g. zsh, bash, fish)
+    #[arg(long, hide = true, value_name = "SHELL")]
+    generate_completion: Option<String>,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -176,12 +181,5 @@ pub enum Command {
     Open {
         /// Project name
         name: String,
-    },
-
-    /// Show help
-    Help {
-        /// Command to get help for
-        #[arg(default_value = "")]
-        command: String,
     },
 }

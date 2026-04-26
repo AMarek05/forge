@@ -19,6 +19,7 @@ pub fn run(command: String) -> Result<()> {
             "setup" => print_setup_help(),
             "include" => print_include_help(),
             "lang" => print_lang_help(),
+            "overseer" => print_overseer_help(),
             "overseer-def" => print_overseer_def_help(),
             "edit" => print_edit_help(),
             "open" => print_open_help(),
@@ -36,20 +37,20 @@ USAGE:
     forge <COMMAND>
 
 COMMANDS:
-    create      Create a new project
-    remove      Remove a project from the index
-    list        List all projects
-    sync        Re-scan FORGE_SYNC_BASE and rebuild the index
-    cd          Print project path to stdout
-    session     Switch to or create a tmux session
-    pick        Interactive fzf session picker
-    setup       Run setup scripts for a project
-    include     List or show include modules
-    lang        List or add language packs
-    overseer-def  Print JSON overseer task definition
-    edit        Edit project's .wl in $EDITOR
-    open        Open project directory in $EDITOR
-    help        Show help
+    create         Create a new project
+    remove         Remove a project from the index
+    list           List all projects
+    sync           Re-scan FORGE_SYNC_BASE and rebuild the index
+    cd             Print project path to stdout
+    session        Switch to or create a tmux session
+    pick           Interactive fzf session picker
+    setup          Run setup scripts for a project
+    include        List or show include modules
+    lang           List or add language packs
+    overseer       Run or manage overseer.nvim task templates
+    overseer-def   Print JSON overseer task definition
+    edit           Edit project's .wl in $EDITOR
+    open           Open project directory in $EDITOR
 
 Run 'forge help <COMMAND>' for details.
 "#);
@@ -104,7 +105,7 @@ fn print_cd_help() {
     println!(r#"forge-cd — print project path to stdout
 
 USAGE:
-    forge cd <NAME>
+    forge cd <NAME> [--print]
 "#);
 }
 
@@ -112,10 +113,11 @@ fn print_session_help() {
     println!(r#"forge-session — switch to or create a tmux session
 
 USAGE:
-    forge session [NAME] [--setup]
+    forge session [NAME] [--setup] [--open]
 
 FLAGS:
     --setup    Run setup scripts in the session before switching
+    --open     Open project in $EDITOR after switching
 "#);
 }
 
@@ -173,6 +175,27 @@ FLAGS:
     --add              Add a new language pack
     --path <path>      Path under ~/sync (for lang add)
     --direnv <direnv>  direnv directive (for lang add)
+"#);
+}
+
+fn print_overseer_help() {
+    println!(r#"forge-overseer — run or manage overseer.nvim task templates
+
+USAGE:
+    forge overseer [flags]
+    forge overseer <NAME> [flags]
+    forge overseer --regen
+    forge overseer --rm <NAME>
+
+FLAGS:
+    --regen             Regenerate all project templates
+    --rm                Remove project's templates
+    --setup             Run setup scripts for overseer include
+
+DESCRIPTION:
+    Without flags, opens the overseer.nvim task picker in nvim.
+    Templates are written to:
+    ~/.local/share/nvim/site/lua/overseer/template/forge/
 "#);
 }
 

@@ -21,5 +21,8 @@ rustPlatform.buildRustPackage {
     mkdir -p $out/share/forge/includes
     cp -r languages/* $out/share/forge/languages/
     cp -r includes/* $out/share/forge/includes/
-  '';
+
+    # Generate and install zsh completions
+    $out/bin/forge --generate-completion zsh > $out/share/zsh/site-functions/_forge
+    '';
 }
