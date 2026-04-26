@@ -8,6 +8,13 @@ SYNC_BASE="$TEST_DIR/sync"
 
 export HOME="$TEST_DIR"
 mkdir -p "$HOME/.forge"
+mkdir -p "$HOME/.config/git"
+cat > "$HOME/.config/git/config" << EOF
+[user]
+    email = test@forge.local
+    name = Forge Test
+EOF
+
 cat > "$HOME/.forge/config.sh" << EOF
 FORGE_SYNC_BASE="$SYNC_BASE"
 FORGE_BASE="$TEST_DIR/.forge"
