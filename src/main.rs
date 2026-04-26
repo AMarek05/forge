@@ -10,6 +10,7 @@ mod wl_parser;
 use anyhow::Result;
 use clap::Parser;
 use clap::CommandFactory;
+use crate::config::ForgeConfig;
 
 fn list_shells() -> String {
     ["zsh", "bash", "fish", "powershell"].join(", ")
