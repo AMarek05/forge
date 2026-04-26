@@ -175,6 +175,7 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
 
     let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
     let setup_sh = lang_dir.join(&lang.name).join("setup.sh");
+    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
     if !setup_sh.exists() {
     let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
         return Ok(());
