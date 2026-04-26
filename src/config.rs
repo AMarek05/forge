@@ -17,6 +17,8 @@ pub struct ForgeConfig {
     pub editor: String,
     pub tmux_binary: String,
     pub path_override: Option<String>,
+    pub lang_dir: Option<PathBuf>,
+    pub include_dir: Option<PathBuf>,
 }
 
 impl ForgeConfig {
@@ -72,6 +74,8 @@ impl ForgeConfig {
             editor: vars.get("FORGE_EDITOR").cloned().unwrap_or_else(|| "nvim".to_string()),
             tmux_binary: vars.get("FORGE_TMUX_BINARY").cloned().unwrap_or_else(|| "tmux".to_string()),
             path_override: vars.get("FORGE_PATH_OVERRIDE").cloned().filter(|s| !s.is_empty()),
+            lang_dir: vars.get("FORGE_LANG_DIR").map(PathBuf::from),
+            include_dir: vars.get("FORGE_INCLUDE_DIR").map(PathBuf::from),
         })
     }
 }

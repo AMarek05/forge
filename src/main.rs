@@ -31,6 +31,13 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+
+    if cli.print_lang_dir {
+        let config = ForgeConfig::load()?;
+        println!("{}", config.lang_dir.unwrap_or_default().display());
+        return Ok(());
+    }
+
     match cli.command {
         cli::Command::Create { name, lang, no_open, setup, include, path, run, editor, dry_run } =>
             commands::create(name, lang, no_open, setup, include, path, run, editor, dry_run),

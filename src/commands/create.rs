@@ -173,8 +173,10 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         return Ok(());
     }
 
-    let setup_sh = config.base.join("languages").join(&lang.name).join("setup.sh");
+    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
+    let setup_sh = lang_dir.join(&lang.name).join("setup.sh");
     if !setup_sh.exists() {
+    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
         return Ok(());
     }
 
@@ -183,7 +185,8 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         .unwrap_or("");
 
     let lang_name = &lang.name;
-    let lang_template_dir = config.base.join("languages").join(lang_name);
+    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
+    let lang_template_dir = lang_dir.join(&lang.name);
 
     let env_vars: [(&str, &str); 9] = [
         ("FORGE_PROJECT_NAME", &project_name),

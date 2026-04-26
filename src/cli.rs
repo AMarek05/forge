@@ -14,6 +14,10 @@ pub struct Cli {
     #[arg(long, hide = true, value_name = "SHELL")]
     pub generate_completion: Option<String>,
 
+    /// Print the language registry directory and exit
+    #[arg(long, hide = true)]
+    pub print_lang_dir: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
