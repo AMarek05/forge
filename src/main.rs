@@ -8,36 +8,38 @@ mod tmux;
 mod wl_parser;
 
 use anyhow::Result;
-use clap::Parser;
-use clap::CommandFactory;
-use crate::config::ForgeConfig;
+use clap::{Parser, CommandFactory};
 
 fn list_shells() -> String {
     ["zsh", "bash", "fish", "powershell"].join(", ")
 }
 
 fn main() -> Result<()> {
-    let cli = cli::Cli::parse();
+    // Handle --generate-completion and --print-lang-dir by intercepting args
+    // before clap does its normal parsing (which requires a subcommand).
+    let args: Vec<String> = std::env::args_os().map(|s| s.to_string_lossy().to_string()).collect();
 
-    // Handle completion generation early, before command dispatch
-    if let Some(ref shell) = cli.generate_completion {
-        let mut cmd = cli::Cli::command();
-        match shell.as_str() {
-            "zsh" => clap_complete::generate(clap_complete::shells::Zsh, &mut cmd, "forge", &mut std::io::stdout()),
-            "bash" => clap_complete::generate(clap_complete::shells::Bash, &mut cmd, "forge", &mut std::io::stdout()),
-            "fish" => clap_complete::generate(clap_complete::shells::Fish, &mut cmd, "forge", &mut std::io::stdout()),
-            "powershell" => clap_complete::generate(clap_complete::shells::PowerShell, &mut cmd, "forge", &mut std::io::stdout()),
-            _ => anyhow::bail!("Unsupported shell: {}. Use: {}", shell, list_shells()),
+    if let Some(idx) = args.iter().position(|a| a == "--generate-completion") {
+        if let Some(shell) = args.get(idx + 1) {
+            let mut cmd = cli::Cli::command();
+            match shell.as_str() {
+                "zsh" => clap_complete::generate(clap_complete::shells::Zsh, &mut cmd, "forge", &mut std::io::stdout()),
+                "bash" => clap_complete::generate(clap_complete::shells::Bash, &mut cmd, "forge", &mut std::io::stdout()),
+                "fish" => clap_complete::generate(clap_complete::shells::Fish, &mut cmd, "forge", &mut std::io::stdout()),
+                "powershell" => clap_complete::generate(clap_complete::shells::PowerShell, &mut cmd, "forge", &mut std::io::stdout()),
+                _ => anyhow::bail!("Unsupported shell: {}. Use: {}", shell, list_shells()),
+            }
+            return Ok(());
         }
-        return Ok(());
     }
 
-
-    if cli.print_lang_dir {
-        let config = ForgeConfig::load()?;
+    if args.contains(&"--print-lang-dir".to_string()) {
+        let config = config::ForgeConfig::load()?;
         println!("{}", config.lang_dir.unwrap_or_default().display());
         return Ok(());
     }
+
+    let cli = cli::Cli::parse();
 
     match cli.command {
         cli::Command::Create { name, lang, no_open, setup, include, path, run, editor, dry_run } =>
