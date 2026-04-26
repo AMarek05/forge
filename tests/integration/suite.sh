@@ -6,6 +6,13 @@ FORGE="${FORGE:-$(nix build .#forge --print-out-paths --quiet 2>/dev/null)/bin/f
 TEST_DIR="${TMPDIR:-/tmp}/forge-test-$$"
 SYNC_BASE="$TEST_DIR/sync"
 
+export HOME="$TEST_DIR"
+mkdir -p "$HOME/.forge"
+cat > "$HOME/.forge/config.sh" << 'EOF'
+export FORGE_SYNC_BASE="$SYNC_BASE"
+export FORGE_BASE="$TEST_DIR/.forge"
+EOF
+
 export FORGE_SYNC_BASE="$SYNC_BASE"
 export FORGE_BASE="$TEST_DIR/.forge"
 
