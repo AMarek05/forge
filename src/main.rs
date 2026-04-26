@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 mod cli;
 mod commands;
 mod config;
@@ -11,28 +9,23 @@ mod wl_parser;
 
 use anyhow::Result;
 use clap::Parser;
-use clap_complete::Generator;
-
-fn print_completions<G: Generator>(gen: G, cmd: &mut clap::Command) {
-    clap_complete::generate(gen, cmd, "forge", &mut std::io::stdout());
-}
+use clap::CommandFactory;
 
 fn list_shells() -> String {
-    let shells = clap_complete::shells::all();
-    shells.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ")
+    ["zsh", "bash", "fish", "powershell"].join(", ")
 }
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();
 
     // Handle completion generation early, before command dispatch
-    if let Some(shell) = &cli.generate_completion {
+    if let Some(ref shell) = cli.generate_completion {
         let mut cmd = cli::Cli::command();
         match shell.as_str() {
-            "zsh" => print_completions(clap_complete::shells::Zsh, &mut cmd),
-            "bash" => print_completions(clap_complete::shells::Bash, &mut cmd),
-            "fish" => print_completions(clap_complete::shells::Fish, &mut cmd),
-            "powershell" => print_completions(clap_complete::shells::PowerShell, &mut cmd),
+            "zsh" => clap_complete::generate(clap_complete::shells::Zsh, &mut cmd, "forge", &mut std::io::stdout()),
+            "bash" => clap_complete::generate(clap_complete::shells::Bash, &mut cmd, "forge", &mut std::io::stdout()),
+            "fish" => clap_complete::generate(clap_complete::shells::Fish, &mut cmd, "forge", &mut std::io::stdout()),
+            "powershell" => clap_complete::generate(clap_complete::shells::PowerShell, &mut cmd, "forge", &mut std::io::stdout()),
             _ => anyhow::bail!("Unsupported shell: {}. Use: {}", shell, list_shells()),
         }
         return Ok(());

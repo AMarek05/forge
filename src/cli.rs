@@ -12,7 +12,7 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     /// Generate shell completions (e.g. zsh, bash, fish)
     #[arg(long, hide = true, value_name = "SHELL")]
-    generate_completion: Option<String>,
+    pub generate_completion: Option<String>,
 
     #[command(subcommand)]
     pub command: Command,

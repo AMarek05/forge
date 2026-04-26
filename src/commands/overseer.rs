@@ -116,7 +116,7 @@ pub fn run(regen: bool, name: Option<String>, remove: bool, _setup: bool) -> Res
 
     if let Some(ref project_name) = name {
         let project = index.projects.iter()
-            .find(|p| p.name == project_name)
+            .find(|p| p.name == *project_name)
             .ok_or_else(|| anyhow::anyhow!("project '{}' not found in index", project_name))?;
         write_project_templates(project)?;
     } else {

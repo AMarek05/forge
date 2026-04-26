@@ -1,11 +1,6 @@
 //! `forge lang` — list or add language packs.
 
 use std::fs;
-use std::path::PathBuf;
-use std::os::unix::fs::PermissionsExt;
-
-use anyhow::Result;
-
 use crate::config::ForgeConfig;
 use crate::wl_parser::parse_lang_wl;
 
