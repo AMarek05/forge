@@ -1,7 +1,5 @@
 //! `forge overseer-def` — print JSON overseer task definition for a project.
 
-use std::process::Command;
-
 use anyhow::{Context, Result};
 
 use crate::index::{self as index_mod};

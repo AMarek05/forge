@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Parse `~/.forge/config.sh` shell-style exports into a ForgeConfig struct.
 
 use std::collections::HashMap;

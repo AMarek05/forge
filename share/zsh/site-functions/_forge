@@ -1,0 +1,89 @@
+#compdef forge
+
+forge() {
+  local -a commands
+  commands=(
+    "create:Create a new project"
+    "remove:Remove a project from the index"
+    "list:List all projects"
+    "sync:Re-scan FORGE_SYNC_BASE and rebuild the index"
+    "cd:Print project path to stdout"
+    "session:Switch to or create a tmux session"
+    "pick:Interactive fzf session picker"
+    "setup:Run setup scripts for a project"
+    "include:List or show include modules"
+    "lang:List or add language packs"
+    "overseer:Run or manage overseer.nvim task templates"
+    "overseer-def:Print JSON overseer task definition"
+    "edit:Edit project's .wl in \$EDITOR"
+    "open:Open project directory in \$EDITOR"
+  )
+
+  if [[ "${words[CURRENT]}" == -* ]]; then
+    _describe "options" "(
+      --help 'Show help'
+      --version 'Show version'
+    )
+    return
+  fi
+
+  if (( CURRENT == 2 )); then
+    _describe "commands" commands
+    return
+  fi
+
+  local cmd="${words[2]}"
+  case "$cmd" in
+    create)
+      _describe "flags" "(
+        --lang 'Language (required)'
+        --no-open 'Skip opening .wl in \$EDITOR'
+        --setup 'Run setup scripts after creating .wl'
+        --include 'Pre-populate includes field (comma-separated)'
+        --path 'Override project path'
+        --run 'Run arbitrary shell command after creation'
+        --editor 'Open \$EDITOR after full creation'
+        --dry-run 'Print actions without executing'
+      )"
+      ;;
+    remove|list|cd|edit|open|overseer-def)
+      _message "no additional args"
+      ;;
+    session)
+      _describe "flags" "(
+        --setup 'Run setup scripts in the session'
+        --open 'Open project in \$EDITOR after switching'
+      )"
+      ;;
+    pick)
+      _describe "flags" "(
+        --tags 'Filter by tags (comma-separated)'
+      )"
+      ;;
+    setup)
+      _describe "flags" "(
+        --dry-run 'Print actions without executing'
+      )"
+      ;;
+    include)
+      _describe "flags" "(
+        --list 'List all available includes'
+      )"
+      ;;
+    lang)
+      _describe "flags" "(
+        --list 'List all available languages'
+        --add 'Add a new language pack'
+      )"
+      ;;
+    overseer)
+      _describe "flags" "(
+        --regen 'Regenerate all project templates'
+        --rm 'Remove project's templates'
+        --setup 'Run setup scripts for overseer include'
+      )"
+      ;;
+  esac
+}
+
+forge "$@"

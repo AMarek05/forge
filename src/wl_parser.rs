@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Parse `.wl` project files and `lang.wl` language registry files.
 //!
 //! `.wl` format:

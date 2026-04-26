@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! `forge help` — show help.
 
 use anyhow::Result;

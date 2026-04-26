@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Read include registry entries and merge fields into project `.wl` data.
 
 use std::collections::HashMap;

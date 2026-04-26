@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! `forge create` — create a new project.
 
 use std::fs;

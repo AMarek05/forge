@@ -19,7 +19,6 @@ pub mod sync;
 pub use cd::run as cd;
 pub use create::run as create;
 pub use edit::run as edit;
-pub use help::run as help;
 pub use include::run as include;
 pub use lang::run as lang;
 pub use list::run as list;
