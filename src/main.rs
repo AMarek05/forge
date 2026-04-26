@@ -38,6 +38,8 @@ fn main() -> Result<()> {
             commands::lang(list, add, lang_name, path, direnv),
         cli::Command::OverseerDef { name } =>
             commands::overseer_def(name),
+        cli::Command::Overseer { regen, name, rm, setup } =>
+            commands::overseer(regen, name, rm, setup),
         cli::Command::Edit { name } =>
             commands::edit(name),
         cli::Command::Open { name } =>

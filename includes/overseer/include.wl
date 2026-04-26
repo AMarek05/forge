@@ -1,4 +1,4 @@
-desc="Register build/run/test as overseer tasks"
-provides=["overseer-template"]
-requires=["overseer.nvim"]
+desc="Add overseer.nvim task templates for the project"
+provides=["overseer"]
+requires=[]
 version="1.0"

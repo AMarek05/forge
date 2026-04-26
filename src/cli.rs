@@ -142,6 +142,24 @@ pub enum Command {
         direnv: Option<String>,
     },
 
+    /// Run or manage overseer.nvim task templates
+    Overseer {
+        /// Regenerate all project templates
+        #[arg(long)]
+        regen: bool,
+
+        /// Project name (single project)
+        name: Option<String>,
+
+        /// Remove project's templates
+        #[arg(long)]
+        rm: bool,
+
+        /// Run setup scripts for overseer include
+        #[arg(long)]
+        setup: bool,
+    },
+
     /// Print JSON overseer task definition for a project
     OverseerDef {
         /// Project name
