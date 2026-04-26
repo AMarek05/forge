@@ -20,3 +20,5 @@ result-*
 *.bin
 
 forge
+
+.direnv/
