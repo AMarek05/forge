@@ -73,6 +73,9 @@ pub fn save_index_to(index: &ProjectIndex, path: &PathBuf) -> Result<()> {
 }
 
 fn index_path() -> Result<PathBuf> {
+    if let Ok(base) = std::env::var("FORGE_BASE") {
+        return Ok(PathBuf::from(base).join(".forge-index.json"));
+    }
     let home = dirs::home_dir().context("no home dir")?;
     Ok(home.join(".forge-index.json"))
 }
