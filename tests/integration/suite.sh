@@ -19,8 +19,8 @@ NC='\033[0m'
 PASSED=0
 FAILED=0
 
-pass() { printf "${GREEN}[PASS]${NC} %s\n" "$1"; ((PASSED++)); }
-fail() { printf "${RED}[FAIL]${NC} %s\n" "$1"; ((FAILED++)); exit 1; }
+pass() { printf "${GREEN}[PASS]${NC} %s\n" "$1"; PASSED=$((PASSED + 1)); }
+fail() { printf "${RED}[FAIL]${NC} %s\n" "$1"; FAILED=$((FAILED + 1)); exit 1; }
 info() { printf "${YELLOW}[INFO]${NC} %s\n" "$1"; }
 
 echo "=== Integration Tests ==="
