@@ -121,7 +121,8 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
 }
 
 fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
-    let lang_path = config.base.join("languages").join(lang_name).join("lang.wl");
+    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
+    let lang_path = lang_dir.join(lang_name).join("lang.wl");
     parse_lang_wl(&lang_path)
         .with_context(|| format!("language '{}' not found in registry", lang_name))
 }
