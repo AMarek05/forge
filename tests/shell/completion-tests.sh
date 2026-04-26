@@ -47,7 +47,9 @@ echo "[TEST] zsh completion file loads in zsh"
 completion_file=$(mktemp)
 echo "$completion" > "$completion_file"
 # Verify it doesn't cause a parse error (just sourcing the compinit preamble)
-if zsh -e -f -c "autoload -Uz compinit; compinit" 2>/dev/null; then
+if ! command -v zsh >/dev/null 2>&1; then
+  echo "  SKIP: zsh not available in PATH"
+elif zsh -e -f -c "autoload -Uz compinit; compinit" 2>/dev/null; then
   # Now try to load our completion
   result=$(zsh -e -f -c "source '$completion_file'; compdef _forge forge" 2>&1)
   if [ $? -eq 0 ]; then
