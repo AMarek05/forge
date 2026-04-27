@@ -140,7 +140,7 @@ return {
   - All fields present, none missing
   - Opens editor on the `.wl` (unless `--no-open`), auto-syncs on close
 - [ ] `forge edit <project>` — opens `.wl` in `$EDITOR`, auto-syncs on close
-- [ ] `forge check [<project>]` — validate `.wl` syntax and field integrity
+- [x] `forge check [<project>]` — validate `.wl` syntax and field integrity
   - Syntax: malformed lines, unclosed brackets, bad array/json structure
   - `lang` field: resolves against known languages (from HM config)
   - `includes` field: each entry resolves against available includes
