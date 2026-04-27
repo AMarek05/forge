@@ -1,6 +1,7 @@
 //! Commands module — stubs for all forge subcommands.
 
 pub mod cd;
+pub mod check;
 pub mod create;
 pub mod edit;
 pub mod help;
@@ -17,6 +18,8 @@ pub mod setup;
 pub mod sync;
 
 pub use cd::run as cd;
+pub use check::run as check;
+pub use check::run_one as check_one;
 pub use create::run as create;
 pub use edit::run as edit;
 pub use include::run as include;

@@ -186,4 +186,10 @@ pub enum Command {
         /// Project name
         name: String,
     },
+
+    /// Validate .wl syntax and field integrity
+    Check {
+        /// Project name to check (checks all projects if omitted)
+        name: Option<String>,
+    },
 }

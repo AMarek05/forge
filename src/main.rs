@@ -70,5 +70,7 @@ fn main() -> Result<()> {
             commands::edit(name),
         cli::Command::Open { name } =>
             commands::open(name),
+        cli::Command::Check { name } =>
+            commands::check(name),
     }
 }
