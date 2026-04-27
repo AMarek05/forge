@@ -49,17 +49,16 @@ _forge() {
       )
       ;;
     remove|list|cd|edit|open|overseer-def)
-      local -a projects
-      projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
-      
-      if (( ${#projects[@]} > 0 )); then
-        _describe "projects" projects
-      else
-        _message "no projects found — run forge sync first"
+      # Only offer project names at position 3 (forge <cmd> [project])
+      if (( CURRENT == 3 )); then
+        local -a projects
+        projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+        if (( ${#projects[@]} > 0 )); then
+          _describe "projects" projects
+        else
+          _message "no projects found — run forge sync first"
+        fi
       fi
-      
-      # Return early since these commands do not have specific flags
-      return
       ;;
     session)
       flags=(
