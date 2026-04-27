@@ -407,11 +407,12 @@ in
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
     programs.zsh.initContent = ''
-      local comp_file="${config.home.homeDirectory}/.local/share/zsh/site-functions/_forge"
-      mkdir -p "$(dirname "$comp_file")"
-      cat > "$comp_file" << 'FORGE_COMPLETION'
+      local comp_dir="${config.home.homeDirectory}/.local/share/zsh/site-functions"
+      mkdir -p "$comp_dir"
+      cat > "$comp_dir/_forge" << 'FORGE_COMPLETION'
 ${zsh-completion}
 FORGE_COMPLETION
+      fpath=("$comp_dir" $fpath)
     '';
 
     home.sessionVariables = {
