@@ -13,12 +13,16 @@ fi
 echo "  PASS: forge binary exists at $FORGE_BIN"
 
 # Test: forge --generate-completion zsh
-echo "[TEST] forge --generate-completion zsh"
+# NOTE: we test that the flag works and outputs something, but the
+# dynamically-generated zsh from clap_complete has known syntax issues
+# (unmatched single-quotes in _arguments). The real completion file
+# lives in share/zsh/site-functions/_forge and is installed by the HM module.
+echo "[TEST] forge --generate-completion zsh (flag exists)"
 completion=$($FORGE_BIN --generate-completion zsh 2>&1)
 if echo "$completion" | grep -q "create\|remove\|list"; then
-  echo "  PASS: zsh completion has subcommands"
+  echo "  PASS: zsh completion flag outputs subcommand hints"
 else
-  echo "  FAIL: zsh completion missing subcommands"
+  echo "  FAIL: zsh completion flag missing expected output"
   exit 1
 fi
 
@@ -42,11 +46,15 @@ else
   exit 1
 fi
 
-# Test: forge --generate-completion zsh > _forge (verify file loads in zsh)
-echo "[TEST] zsh completion file loads in zsh"
-completion_file=$(mktemp)
-echo "$completion" > "$completion_file"
-# Verify it doesn't cause a parse error (just sourcing the compinit preamble)
+# Test: verify the static _forge completion file (from share/zsh/site-functions/)
+# loads correctly in zsh — this is the file the HM module installs
+echo "[TEST] static _forge completion file loads in zsh"
+static_completion="$FORGE_BIN"
+static_completion="${static_completion%/bin/forge}/share/zsh/site-functions/_forge"
+if [ ! -f "$static_completion" ]; then
+  echo "  FAIL: static completion file not found at $static_completion"
+  exit 1
+fi
 if ! command -v zsh >/dev/null 2>&1; then
   echo "  SKIP: zsh not available"
 elif ! zsh -e -f -c "exit 0" 2>/dev/null; then
@@ -54,14 +62,14 @@ elif ! zsh -e -f -c "exit 0" 2>/dev/null; then
 elif ! zsh -e -f -c "autoload -Uz compinit" 2>/dev/null; then
   echo "  SKIP: zsh compinit not available"
 else
-  result=$(zsh -e -f -c "source '$completion_file'; compdef _forge forge" 2>&1)
+  result=$(zsh -e -f -c "source '$static_completion'; compdef _forge forge" 2>&1)
   if [ $? -eq 0 ]; then
-    echo "  PASS: completion file loads without errors"
+    echo "  PASS: static completion file loads without errors"
   else
-    echo "  WARN: completion file had issues (may be ok): $result"
+    echo "  FAIL: static completion file has errors: $result"
+    exit 1
   fi
 fi
-rm -f "$completion_file"
 
 # Test: help output
 echo "[TEST] forge --help"
