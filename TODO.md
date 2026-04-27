@@ -4,7 +4,7 @@
 
 ---
 
-## Current Status (2026-04-26)
+## Current Status (2026-04-27)
 
 ### What's done
 
@@ -12,14 +12,14 @@
 
 **Module** (`module/default.nix`): generates language flakes, `setup.sh`, and `lang.wl` for all 8 languages at module eval time — shipped to Nix store. Same for includes (git, overseer). Exports `homeManagerModules` via flake output.
 
-**Key commits (pushed to `AMarek05/forge.git` main)**:
-- `36f06c9` — Fix: pass lib as arg to module import not let binding
-- `798a682` — Fix lib.homeManagerModules: pass lib explicitly
-- `4a9a1af` — Add lib.homeManagerModules export and inputs default
-- `ad9dbcd` — Fix inclusion of package, remove dangerous pkgs.forge (Adam's)
-- `8d73254` — module: add git to all language requires
+**Shell completion**: hand-written zsh completion in `module/completion.zsh`. `@JQ@` placeholder replaced at HM eval time with `${pkgs.jq}/bin/jq`. Project names autocompleted for `remove`, `list`, `cd`, `edit`, `open`, `overseer-def`. All subcommands have `--help` flag.
 
-**Adam's sys flake** (`~/sys/modules/forge.nix`): updated to use `inputs.forge.homeManagerModules.${pkgs.system}`. Module switch done.
+**Key commits (pushed to `AMarek05/forge.git` main)**:
+- `dc8c1b5` — fix: rewrite completion with exact CLI flags for each command
+- `ed6e528` — fix: use initContent with lib.mkOrder instead of deprecated initExtraBeforeCompInit
+- `ee435cf` — add --help flag to all command completions
+- `5f94b86` — fix: only show project names at position 3 (not on subsequent tabs)
+- `beb292f` — rename completion.nix → completion.zsh, fix function name, fix array syntax
 
 ---
 
@@ -43,6 +43,7 @@ store: /nix/store/<hash>-forge-0.1.0/
   ├── index.json              # project index
   └── config                  # runtime config
 
+~/.local/share/zsh/site-functions/_forge  # zsh completion (installed by HM)
 ~/.local/share/nvim/site/lua/overseer/template/forge/  # overseer templates (per project)
   ├── myproject.lua
   └── ...
@@ -63,7 +64,7 @@ forge = {
 
 ---
 
-## Overseer Integration — Research Findings
+## Overseer Integration
 
 ### How overseer.nvim works
 
@@ -78,51 +79,21 @@ return {
       components = { "default" },
     }
   end,
-  condition = { dir = "/path/to/project" },  -- optional: only show in certain dirs
-  tags = { overseer.TAG.BUILD },              -- optional: tag for filtering
+  condition = { dir = "/path/to/project" },  -- optional
+  tags = { overseer.TAG.BUILD },              -- optional
   desc = "Optional description",
 }
 ```
 
-**Key APIs:**
-- `overseer.register_template(defn)` — register a template directly
-- `overseer.run_task({name=..., tags=..., first=true}, callback)` — run a task programmatically
-- `overseer.list_tasks()` — list all tasks
-- `overseer.toggle()` — open/close the task list UI
-- `overseer.add_template_hook(opts, hook_fn)` — modify template definitions at load time
+**Template location:** `~/.local/share/nvim/site/lua/overseer/template/forge/`
 
-**Template provider** (dynamic) — can use a `generator` function that returns tasks via callback, with `cache_key` for caching. But static `.lua` files are simpler.
-
-**VS Code tasks.json** is also supported (feature-parity list in docs), but Lua templates are more flexible for forge's use case.
-
-### forge + overseer integration plan
-
-**Template location:** `~/.local/share/nvim/site/lua/overseer/template/forge/`  
-This is under `.local`, not the nvim config dir — clean separation.
-
-**Per-project templates:** One `.lua` file per indexed project. Filename matches project name (sanitized). Template reads the project's `.wl` at **runtime** (when overseer loads it), so it always reflects current build/run/test fields.
-
-**Template regeneration:** `forge overseer --regen` iterates all projects in `index.json, reads each `.wl`, and writes/overwrites the corresponding `~/.local/share/nvim/site/lua/overseer/template/forge/<project>.lua`. Does not require nvim restart — overseer re-scans on `:OverseerRun`.
-
-**Default task behavior:** The template has no `condition.dir` — it appears in `:OverseerRun` for all projects. Optional `forge overseer <name> --regen` for single-project regeneration.
+**Template regeneration:** `forge overseer --regen` iterates all projects in `index.json`, reads each `.wl`, and writes per-project `.lua` templates.
 
 **forge overseer command:**
-- `forge overseer` — open overseer picker (runs `overseer.toggle()` equivalent via CLI)
+- `forge overseer` — open overseer picker
 - `forge overseer --regen` — regenerate all project templates
-- `forge overseer <name>` — regenerate single project's template
-- `forge overseer --rm <name>` — remove a project's template
-
-**Template builder reads `.wl` at load time** (not at template-write time), so `.wl` changes are reflected on next `:OverseerRun` without regeneration.
-
-### What needs to change
-
-**`includes/overseer/setup.sh`** — writes per-project Lua templates to `~/.local/share/nvim/site/lua/overseer/template/forge/<name>.lua`. No `.vscode/tasks.json`.
-
-**`src/commands/overseer.rs`** — fully implemented: `overseer`, `overseer --regen`, `overseer <name>`, `overseer --rm <name>`. No-op if nvim not installed.
-
-**`includes/overseer/include.wl`** — `provides=["overseer"]`, `requires=[]`.
-
-**Completions** — dynamic via `clap_complete` (`forge --generate-completion zsh`). No hand-written `_forge` yet.
+- `forge overseer <name>` — regenerate single project template
+- `forge overseer --rm <name>` — remove project template
 
 ---
 
@@ -149,28 +120,20 @@ This is under `.local`, not the nvim config dir — clean separation.
 - [x] Commits pushed to `AMarek05/forge.git` main
 - [x] Adam's sys flake updated and switched
 
-### Overseer integration — IN PROGRESS
-#### Research ✅
-- [x] overseer.nvim template format (Lua files under `lua/overseer/template/`)
-- [x] `overseer.register_template()`, `overseer.run_task()`, `overseer.toggle()`
-- [x] Template builder reads `.wl` at load time (not at write time)
-- [x] Template dirs: `~/.local/share/nvim/site/lua/overseer/template/forge/`
+### Overseer integration ✅
+- [x] `includes/overseer/setup.sh` — writes per-project Lua templates
+- [x] `includes/overseer/include.wl` — `provides=["overseer"]`, `requires=[]`
+- [x] `src/commands/overseer.rs` — all subcommands implemented
+- [x] `forge overseer-def <name>` — hooked up to CLI
 
-#### Implementation
-- [x] Rewrite `includes/overseer/setup.sh` — remove `.vscode/tasks.json`, write per-project Lua template to `~/.local/share/nvim/site/lua/overseer/template/forge/<name>.lua`
-- [x] Update `includes/overseer/include.wl` — `provides=["overseer"]`, `requires=[]`
-- [x] Implement `src/commands/overseer.rs`:
-  - `forge overseer` → open overseer picker (no-op if no nvim)
-  - `forge overseer --regen` → regenerate all project templates
-  - `forge overseer <name>` → regenerate single project template
-  - `forge overseer --rm <name>` → remove project template
-- [x] Add `forge overseer-def <name>` (already exists in `overseer_def.rs`, hook it up to CLI)
-- [x] ZSH completions: dynamic generation via `clap_complete` (`--generate-completion zsh`)
-- [ ] Write `completions/zsh/_forge` hand-written completion file for true shell integration
-- [ ] Test end-to-end: `forge create x --lang rust --include overseer` → verify Lua template written
+### ZSH Completion ✅
+- [x] Hand-written `module/completion.zsh` with project name autocompletion
+- [x] `@JQ@` placeholder replaced at HM eval time via `builtins.replaceStrings`
+- [x] `--help` flag on all subcommands
+- [x] `programs.zsh.initContent` with `lib.mkOrder 550` for fpath setup
 
 ### End-to-end testing — PENDING
-All items below require Adam's environment to verify.
+Requires Adam's environment to verify.
 
 - [ ] `forge create x --lang rust --no-open` — cargo init, git commit, direnv
 - [ ] `forge create x --lang python --no-open` — poetry init via nix develop
@@ -179,11 +142,7 @@ All items below require Adam's environment to verify.
 - [ ] `forge list` — shows all created projects
 - [ ] `forge cd x --print` — returns correct path
 - [ ] `forge overseer --regen` — generates Lua templates
-- [ ] `forge --generate-completion zsh > _forge` — shell completions work
 - [ ] `:OverseerRun` in nvim — shows forge tasks for a project
-
-### Low priority / deferred
-- [ ] Hand-written `completions/zsh/_forge` for true shell integration (clap_complete dynamic gen is functional)
 - [ ] Test `forge pick` ctrl-o opens nvim with Oil
 - [ ] Test `forge session x --open` opens nvim with Oil
 
@@ -200,5 +159,4 @@ tests/
 ├── module/queries.md         # Nix module eval test queries
 ├── integration/suite.sh      # end-to-end forge workflow tests
 └── shell/completion-tests.sh # completion generation + --help/--version smoke
-```
 ```
