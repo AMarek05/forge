@@ -7,7 +7,7 @@ use std::path::Path;
 use anyhow::{bail, Context, Result};
 
 use crate::config::ForgeConfig;
-use crate::wl_parser::{parse_json_array, parse_wl};
+use crate::wl_parser::parse_json_array;
 use crate::wl_parser::strip_quotes as wp_strip_quotes;
 
 /// Result of validating a single .wl file
