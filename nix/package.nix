@@ -14,7 +14,7 @@ rustPlatform.buildRustPackage {
   src = lib.cleanSource ../.;
   cargoLock.lockFile = ../Cargo.lock;
   cargoSha256 = "sha256-GXQqRMeP9XGz25sJ8W7i3FHn2sksKDR8Gij6IK4dsPE=";
-  buildInputs = [ pkg-config openssl dbus fzf direnv nix jq ];
+  buildInputs = [ pkg-config openssl dbus fzf direnv nix ];
 
   postInstall = ''
     mkdir -p $out/share/forge/languages

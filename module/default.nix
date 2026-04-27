@@ -337,7 +337,7 @@ let
     "setup.sh" = generate-include-setup name inc;
   }) all-includes;
 
-  # Completion template read from file to avoid complex escaping issues
+  # Completion template read from file; jq path baked in at module eval time
   zsh-completion = builtins.replaceStrings ["@JQ@"] ["${pkgs.jq}/bin/jq"] (builtins.readFile ../nix/completion-template.txt);
 
 
