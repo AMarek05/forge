@@ -38,6 +38,7 @@ _forge() {
   case "$cmd" in
     create)
       flags=(
+        "--help:Show help"
         "--lang:Language (required)"
         "--no-open:Skip opening .wl in $EDITOR"
         "--setup:Run setup scripts after creating .wl"
@@ -62,33 +63,39 @@ _forge() {
       ;;
     session)
       flags=(
+        "--help:Show help"
         "--setup:Run setup scripts in the session"
         "--open:Open project in $EDITOR after switching"
       )
       ;;
     pick)
       flags=(
+        "--help:Show help"
         "--tags:Filter by tags (comma-separated)"
       )
       ;;
     setup)
       flags=(
+        "--help:Show help"
         "--dry-run:Print actions without executing"
       )
       ;;
     include)
       flags=(
+        "--help:Show help"
         "--list:List all available includes"
       )
       ;;
     lang)
       flags=(
+        "--help:Show help"
         "--list:List all available languages"
         "--add:Add a new language pack"
       )
       ;;
     overseer)
       flags=(
+        "--help:Show help"
         "--regen:Regenerate all project templates"
         "--rm:Remove project's templates"
         "--setup:Run setup scripts for overseer include"
