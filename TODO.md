@@ -116,20 +116,13 @@ This is under `.local`, not the nvim config dir — clean separation.
 
 ### What needs to change
 
-**`includes/overseer/setup.sh`** — currently writes `.vscode/tasks.json`. Must be rewritten to:
-- Create `~/.local/share/nvim/site/lua/overseer/template/forge/` dir
-- Write a per-project lua template that reads build/run/test from the project's `.wl`
-- Remove `.vscode/tasks.json` approach entirely
+**`includes/overseer/setup.sh`** — writes per-project Lua templates to `~/.local/share/nvim/site/lua/overseer/template/forge/<name>.lua`. No `.vscode/tasks.json`.
 
-**`src/commands/overseer.rs`** — currently a stub. Implement:
-- `overseer --regen` → iterate index, write templates
-- `overseer <name>` → write single project's template
-- `overseer --rm <name>` → delete template file
-- No-op if nvim not installed
+**`src/commands/overseer.rs`** — fully implemented: `overseer`, `overseer --regen`, `overseer <name>`, `overseer --rm <name>`. No-op if nvim not installed.
 
-**`includes/overseer/include.wl`** — update fields:
-- `provides = ["overseer"]` (not "overseer-template")
-- `requires = []` (overseer.nvim is a nvim plugin, not a system req)
+**`includes/overseer/include.wl`** — `provides=["overseer"]`, `requires=[]`.
+
+**Completions** — dynamic via `clap_complete` (`forge --generate-completion zsh`). No hand-written `_forge` yet.
 
 ---
 
@@ -164,23 +157,21 @@ This is under `.local`, not the nvim config dir — clean separation.
 - [x] Template dirs: `~/.local/share/nvim/site/lua/overseer/template/forge/`
 
 #### Implementation
-- [ ] Rewrite `includes/overseer/setup.sh` — remove `.vscode/tasks.json`, write per-project Lua template to `~/.local/share/nvim/site/lua/overseer/template/forge/<name>.lua`
-- [ ] Update `includes/overseer/include.wl` — `provides=["overseer"]`, `requires=[]`
-- [ ] Implement `src/commands/overseer.rs`:
+- [x] Rewrite `includes/overseer/setup.sh` — remove `.vscode/tasks.json`, write per-project Lua template to `~/.local/share/nvim/site/lua/overseer/template/forge/<name>.lua`
+- [x] Update `includes/overseer/include.wl` — `provides=["overseer"]`, `requires=[]`
+- [x] Implement `src/commands/overseer.rs`:
   - `forge overseer` → open overseer picker (no-op if no nvim)
   - `forge overseer --regen` → regenerate all project templates
   - `forge overseer <name>` → regenerate single project template
   - `forge overseer --rm <name>` → remove project template
-- [ ] Add `forge overseer-def <name>` (already exists in `overseer_def.rs`, hook it up to CLI)
+- [x] Add `forge overseer-def <name>` (already exists in `overseer_def.rs`, hook it up to CLI)
+- [x] ZSH completions: dynamic generation via `clap_complete` (`--generate-completion zsh`)
+- [ ] Write `completions/zsh/_forge` hand-written completion file for true shell integration
+- [ ] Test end-to-end: `forge create x --lang rust --include overseer` → verify Lua template written
 
-### ZSH completions — IN PROGRESS
-- [ ] Write `completions/zsh/_forge`
-- [ ] Subcommands: create, remove, list, sync, cd, session, pick, setup, include, lang, overseer, overseer-def, edit, open, help
-- [ ] Flags per subcommand (--lang, --no-open, --dry-run, etc.)
-- [ ] Language name and include name completions (from store dirs)
-- [ ] Project name completions (from index.json)
+### End-to-end testing — PENDING
+All items below require Adam's environment to verify.
 
-### Waiting on Adam — Test end-to-end
 - [ ] `forge create x --lang rust --no-open` — cargo init, git commit, direnv
 - [ ] `forge create x --lang python --no-open` — poetry init via nix develop
 - [ ] `forge create x --lang c --no-open` — generic lang
@@ -188,40 +179,26 @@ This is under `.local`, not the nvim config dir — clean separation.
 - [ ] `forge list` — shows all created projects
 - [ ] `forge cd x --print` — returns correct path
 - [ ] `forge overseer --regen` — generates Lua templates
-- [ ] `:OverseerRun` in nvim — shows forge tasks
+- [ ] `forge --generate-completion zsh > _forge` — shell completions work
+- [ ] `:OverseerRun` in nvim — shows forge tasks for a project
 
-### Missing features (low priority)
+### Low priority / deferred
+- [ ] Hand-written `completions/zsh/_forge` for true shell integration (clap_complete dynamic gen is functional)
 - [ ] Test `forge pick` ctrl-o opens nvim with Oil
 - [ ] Test `forge session x --open` opens nvim with Oil
 
 ---
 
-## Directory layout
+## Test suite
+
+Run with: `cd tests && ./run.sh` (or `./run.sh <target>`)
 
 ```
-forge/
-├── Cargo.toml
-├── flake.nix
-├── src/
-│   ├── main.rs, cli.rs
-│   └── commands/
-│       ├── create.rs, remove.rs, list.rs, sync.rs
-│       ├── cd.rs, session.rs, pick.rs
-│       ├── open.rs, setup.rs, lang.rs, include.rs
-│       ├── overseer.rs        # stub — needs implementation
-│       ├── overseer_def.rs    # exists, hook to CLI
-│       └── edit.rs
-├── languages/
-│   ├── rust/setup.sh, flake.nix.template
-│   ├── python/setup.sh, flake.nix.template
-│   └── c, cpp, java, nix, r, txt/
-├── includes/
-│   ├── git/setup.sh
-│   └── overseer/setup.sh      # needs rewrite for Lua templates
-│       └── include.wl         # needs update
-├── completions/
-│   └── zsh/_forge             # missing — needs creation
-├── module/default.nix
-├── nix/package.nix
-└── TODO.md
+tests/
+├── run.sh                    # test runner (all|unit|module|integration|shell)
+├── unit/queries.md           # Rust unit test queries (wl_parser, index, config)
+├── module/queries.md         # Nix module eval test queries
+├── integration/suite.sh      # end-to-end forge workflow tests
+└── shell/completion-tests.sh # completion generation + --help/--version smoke
+```
 ```

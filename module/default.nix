@@ -389,7 +389,13 @@ let
           )"
           ;;
         remove|list|cd|edit|open|overseer-def)
-          _message "no additional args"
+          local -a projects
+          projects=(${(f"$(@jq@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null)"})
+          if (( ${#projects} )); then
+            _describe "projects" projects
+          else
+            _message "no projects found — run forge sync first"
+          fi
           ;;
         session)
           _describe "flags" "(
@@ -496,7 +502,7 @@ in
 
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
-    home.file."share/zsh/site-functions/_forge".text = zsh-completion;
+    home.file."share/zsh/site-functions/_forge".text = builtins.replaceStrings ["@jq@"] ["${pkgs.jq}/bin/jq"] zsh-completion;
 
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;
