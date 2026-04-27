@@ -15,10 +15,11 @@ _forge() {
     "lang:List or add language packs"
     "overseer:Run or manage overseer.nvim task templates"
     "overseer-def:Print JSON overseer task definition"
-    "edit:Edit project's .wl in $EDITOR"
-    "open:Open project directory in $EDITOR"
+    "edit:Edit project's .wl in \$EDITOR"
+    "open:Open project directory in \$EDITOR"
   )
 
+  # Position 2: command or global flag
   if (( CURRENT == 2 )); then
     if [[ "${words[CURRENT]}" == -* ]]; then
       local -a options=(
@@ -40,17 +41,17 @@ _forge() {
       flags=(
         "--help:Show help"
         "--lang:Language (required)"
-        "--no-open:Skip opening .wl in $EDITOR"
+        "--no-open:Skip opening .wl in \$EDITOR"
         "--setup:Run setup scripts after creating .wl"
         "--include:Pre-populate includes field (comma-separated)"
         "--path:Override project path"
         "--run:Run arbitrary shell command after creation"
-        "--editor:Open $EDITOR after full creation"
+        "--editor:Open \$EDITOR after full creation"
         "--dry-run:Print actions without executing"
       )
       ;;
-    remove|list|cd|edit|open|overseer-def)
-      # Only offer project names at position 3 (forge <cmd> [project])
+    remove|list|edit|open|overseer-def)
+      # These take a project name at position 3
       if (( CURRENT == 3 )); then
         local -a projects
         projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
@@ -61,11 +62,25 @@ _forge() {
         fi
       fi
       ;;
+    cd)
+      # cd takes project at pos 3, --help at pos 4+
+      if (( CURRENT == 3 )); then
+        local -a projects
+        projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+        if (( ${#projects[@]} > 0 )); then
+          _describe "projects" projects
+        else
+          _message "no projects found — run forge sync first"
+        fi
+      else
+        flags=("--help:Show help")
+      fi
+      ;;
     session)
       flags=(
         "--help:Show help"
         "--setup:Run setup scripts in the session"
-        "--open:Open project in $EDITOR after switching"
+        "--open:Open project in \$EDITOR after switching"
       )
       ;;
     pick)
