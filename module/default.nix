@@ -337,105 +337,9 @@ let
     "setup.sh" = generate-include-setup name inc;
   }) all-includes;
 
-  # Removed builtins.toFile so this is just a string that Home-manager can write correctly
-  zsh-completion = ''
-    #compdef forge
+  # Completion template read from file; jq path baked in at module eval time
+  zsh-completion = builtins.replaceStrings ["@JQ@"] ["${pkgs.jq}/bin/jq"] (builtins.readFile ../nix/completion-template.txt);
 
-    forge() {
-      local -a commands
-      commands=(
-        "create:Create a new project"
-        "remove:Remove a project from the index"
-        "list:List all projects"
-        "sync:Re-scan FORGE_SYNC_BASE and rebuild the index"
-        "cd:Print project path to stdout"
-        "session:Switch to or create a tmux session"
-        "pick:Interactive fzf session picker"
-        "setup:Run setup scripts for a project"
-        "include:List or show include modules"
-        "lang:List or add language packs"
-        "overseer:Run or manage overseer.nvim task templates"
-        "overseer-def:Print JSON overseer task definition"
-        "edit:Edit project's .wl in \$EDITOR"
-        "open:Open project directory in \$EDITOR"
-      )
-
-      # ''${ is used so Nix doesn't try to interpolate the bash variables
-      if [[ "''${words[CURRENT]}" == -* ]]; then
-        _describe "options" "(
-          --help 'Show help'
-          --version 'Show version'
-        )"
-        return
-      fi
-
-      if (( CURRENT == 2 )); then
-        _describe "commands" commands
-        return
-      fi
-
-      local cmd="''${words[2]}"
-      case "$cmd" in
-        create)
-          _describe "flags" "(
-            --lang 'Language (required)'
-            --no-open 'Skip opening .wl in \$EDITOR'
-            --setup 'Run setup scripts after creating .wl'
-            --include 'Pre-populate includes field (comma-separated)'
-            --path 'Override project path'
-            --run 'Run arbitrary shell command after creation'
-            --editor 'Open \$EDITOR after full creation'
-            --dry-run 'Print actions without executing'
-          )"
-          ;;
-        remove|list|cd|edit|open|overseer-def)
-          local -a projects
-          projects=(${(f"$(@jq@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null)"})
-          if (( ${#projects} )); then
-            _describe "projects" projects
-          else
-            _message "no projects found — run forge sync first"
-          fi
-          ;;
-        session)
-          _describe "flags" "(
-            --setup 'Run setup scripts in the session'
-            --open 'Open project in \$EDITOR after switching'
-          )"
-          ;;
-        pick)
-          _describe "flags" "(
-            --tags 'Filter by tags (comma-separated)'
-          )"
-          ;;
-        setup)
-          _describe "flags" "(
-            --dry-run 'Print actions without executing'
-          )"
-          ;;
-        include)
-          _describe "flags" "(
-            --list 'List all available includes'
-          )"
-          ;;
-        lang)
-          _describe "flags" "(
-            --list 'List all available languages'
-            --add 'Add a new language pack'
-          )"
-          ;;
-        overseer)
-          _describe "flags" "(
-            --regen 'Regenerate all project templates'
-            --rm 'Remove project's templates'
-            --setup 'Run setup scripts for overseer include'
-          )"
-          ;;
-      esac
-    }
-
-    forge "$@"
-  '';
 
 in
 
@@ -502,7 +406,7 @@ in
 
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
-    home.file."share/zsh/site-functions/_forge".text = builtins.replaceStrings ["@jq@"] ["${pkgs.jq}/bin/jq"] zsh-completion;
+    home.file."share/zsh/site-functions/_forge".text = zsh-completion;
 
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;

@@ -1,6 +1,6 @@
 #compdef forge
 
-_forge() {
+forge() {
   local -a commands
   commands=(
     "create:Create a new project"
@@ -15,8 +15,8 @@ _forge() {
     "lang:List or add language packs"
     "overseer:Run or manage overseer.nvim task templates"
     "overseer-def:Print JSON overseer task definition"
-    "edit:Edit project's .wl in \$EDITOR"
-    "open:Open project directory in \$EDITOR"
+    "edit:Edit project's .wl in $EDITOR"
+    "open:Open project directory in $EDITOR"
   )
 
   if [[ "${words[CURRENT]}" == -* ]]; then
@@ -35,28 +35,33 @@ _forge() {
 
   local cmd="${words[2]}"
   local -a flags
-  
+
   case "$cmd" in
     create)
       flags=(
         "--lang:Language (required)"
-        "--no-open:Skip opening .wl in \$EDITOR"
+        "--no-open:Skip opening .wl in $EDITOR"
         "--setup:Run setup scripts after creating .wl"
         "--include:Pre-populate includes field (comma-separated)"
         "--path:Override project path"
         "--run:Run arbitrary shell command after creation"
-        "--editor:Open \$EDITOR after full creation"
+        "--editor:Open $EDITOR after full creation"
         "--dry-run:Print actions without executing"
       )
       ;;
     remove|list|cd|edit|open|overseer-def)
-      _message "no additional args"
-      return
+      local -a projects
+      projects=($( @JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+      if (( ''${#projects} )); then
+        _describe "projects" projects
+      else
+        _message "no projects found — run forge sync first"
+      fi
       ;;
     session)
       flags=(
         "--setup:Run setup scripts in the session"
-        "--open:Open project in \$EDITOR after switching"
+        "--open:Open project in $EDITOR after switching"
       )
       ;;
     pick)
@@ -89,8 +94,7 @@ _forge() {
       ;;
   esac
 
-  # If flags were populated for the command, pass the array to _describe
-  if [[ ${#flags[@]} -gt 0 ]]; then
+  if [[ ''${#flags[@]} -gt 0 ]]; then
     _describe "flags" flags
   fi
 }
