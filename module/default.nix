@@ -406,13 +406,13 @@ in
 
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
-    home.file."share/zsh/site-functions/_forge" = {
-      source = pkgs.writeTextFile {
-        name = "_forge_completion";
-        text = zsh-completion;
-        destination = "/share/zsh/site-functions/_forge";
-      };
-    };
+    programs.zsh.initContent = ''
+      local comp_file="${config.home.homeDirectory}/.local/share/zsh/site-functions/_forge"
+      mkdir -p "$(dirname "$comp_file")"
+      cat > "$comp_file" << 'FORGE_COMPLETION'
+${zsh-completion}
+FORGE_COMPLETION
+    '';
 
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;
