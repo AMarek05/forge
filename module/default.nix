@@ -407,7 +407,11 @@ in
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
     home.file."share/zsh/site-functions/_forge" = {
-      text = zsh-completion;
+      source = pkgs.writeTextFile {
+        name = "_forge_completion";
+        text = zsh-completion;
+        destination = "/share/zsh/site-functions/_forge";
+      };
     };
 
     home.sessionVariables = {
