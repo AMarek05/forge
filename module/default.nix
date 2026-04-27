@@ -12,6 +12,8 @@
 let
   cfg = config.forge;
 
+  compDir = ".local/share/zsh/site-functions";
+
   # Avoid naming the module argument `forge` to prevent collisions with `config.forge`.
   # Pass your package via `extraSpecialArgs = { forgePkg = ...; }` in your flake setup.
   forge-binary = args.forgePkg or null;
@@ -337,9 +339,9 @@ let
     "setup.sh" = generate-include-setup name inc;
   }) all-includes;
 
-  # Completion template — relative path ./completion.nix resolves to module/completion.nix
-  zsh-completion = builtins.replaceStrings ["@JQ@"] ["${pkgs.jq}/bin/jq"] (builtins.readFile ./completion.nix);
-
+  zsh-completion = builtins.replaceStrings [ "@JQ@" ] [ "${pkgs.jq}/bin/jq" ] (
+    builtins.readFile ./completion.zsh
+  );
 
 in
 
@@ -406,14 +408,15 @@ in
 
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
-    programs.zsh.initContent = ''
-      local comp_dir="${config.home.homeDirectory}/.local/share/zsh/site-functions"
-      mkdir -p "$comp_dir"
-      cat > "$comp_dir/_forge" << 'FORGE_COMPLETION'
-${zsh-completion}
-FORGE_COMPLETION
-      fpath=("$comp_dir" $fpath)
-    '';
+    home.file."${compDir}/_forge".text = zsh-completion;
+
+    programs.zsh = {
+      enable = true;
+
+      initExtraBeforeCompInit = ''
+        fpath=("${config.home.homeDirectory}/${compDir}" $fpath)
+      '';
+    };
 
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;

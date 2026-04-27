@@ -1,6 +1,6 @@
 #compdef forge
 
-forge() {
+_forge() {
   local -a commands
   commands=(
     "create:Create a new project"
@@ -19,17 +19,16 @@ forge() {
     "open:Open project directory in $EDITOR"
   )
 
-  if [[ "${words[CURRENT]}" == -* ]]; then
-    local -a options=(
-      "--help:Show help"
-      "--version:Show version"
-    )
-    _describe "options" options
-    return
-  fi
-
   if (( CURRENT == 2 )); then
-    _describe "commands" commands
+    if [[ "${words[CURRENT]}" == -* ]]; then
+      local -a options=(
+        "--help:Show help"
+        "--version:Show version"
+      )
+      _describe "options" options
+    else
+      _describe "commands" commands
+    fi
     return
   fi
 
@@ -51,12 +50,16 @@ forge() {
       ;;
     remove|list|cd|edit|open|overseer-def)
       local -a projects
-      projects=($( @JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
-      if (( ''${#projects} )); then
+      projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+      
+      if (( ${#projects[@]} > 0 )); then
         _describe "projects" projects
       else
         _message "no projects found — run forge sync first"
       fi
+      
+      # Return early since these commands do not have specific flags
+      return
       ;;
     session)
       flags=(
@@ -94,9 +97,9 @@ forge() {
       ;;
   esac
 
-  if [[ ''${#flags[@]} -gt 0 ]]; then
+  if [[ ${#flags[@]} -gt 0 ]]; then
     _describe "flags" flags
   fi
 }
 
-forge "$@"
+_forge "$@"
