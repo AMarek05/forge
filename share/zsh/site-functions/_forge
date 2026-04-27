@@ -1,6 +1,6 @@
 #compdef forge
 
-forge() {
+_forge() {
   local -a commands
   commands=(
     "create:Create a new project"
@@ -20,10 +20,11 @@ forge() {
   )
 
   if [[ "${words[CURRENT]}" == -* ]]; then
-    _describe "options" "(
-      --help 'Show help'
-      --version 'Show version'
+    local -a options=(
+      "--help:Show help"
+      "--version:Show version"
     )
+    _describe "options" options
     return
   fi
 
@@ -33,57 +34,65 @@ forge() {
   fi
 
   local cmd="${words[2]}"
+  local -a flags
+  
   case "$cmd" in
     create)
-      _describe "flags" "(
-        --lang 'Language (required)'
-        --no-open 'Skip opening .wl in \$EDITOR'
-        --setup 'Run setup scripts after creating .wl'
-        --include 'Pre-populate includes field (comma-separated)'
-        --path 'Override project path'
-        --run 'Run arbitrary shell command after creation'
-        --editor 'Open \$EDITOR after full creation'
-        --dry-run 'Print actions without executing'
-      )"
+      flags=(
+        "--lang:Language (required)"
+        "--no-open:Skip opening .wl in \$EDITOR"
+        "--setup:Run setup scripts after creating .wl"
+        "--include:Pre-populate includes field (comma-separated)"
+        "--path:Override project path"
+        "--run:Run arbitrary shell command after creation"
+        "--editor:Open \$EDITOR after full creation"
+        "--dry-run:Print actions without executing"
+      )
       ;;
     remove|list|cd|edit|open|overseer-def)
       _message "no additional args"
+      return
       ;;
     session)
-      _describe "flags" "(
-        --setup 'Run setup scripts in the session'
-        --open 'Open project in \$EDITOR after switching'
-      )"
+      flags=(
+        "--setup:Run setup scripts in the session"
+        "--open:Open project in \$EDITOR after switching"
+      )
       ;;
     pick)
-      _describe "flags" "(
-        --tags 'Filter by tags (comma-separated)'
-      )"
+      flags=(
+        "--tags:Filter by tags (comma-separated)"
+      )
       ;;
     setup)
-      _describe "flags" "(
-        --dry-run 'Print actions without executing'
-      )"
+      flags=(
+        "--dry-run:Print actions without executing"
+      )
       ;;
     include)
-      _describe "flags" "(
-        --list 'List all available includes'
-      )"
+      flags=(
+        "--list:List all available includes"
+      )
       ;;
     lang)
-      _describe "flags" "(
-        --list 'List all available languages'
-        --add 'Add a new language pack'
-      )"
+      flags=(
+        "--list:List all available languages"
+        "--add:Add a new language pack"
+      )
       ;;
     overseer)
-      _describe "flags" "(
-        --regen 'Regenerate all project templates'
-        --rm 'Remove project's templates'
-        --setup 'Run setup scripts for overseer include'
-      )"
+      flags=(
+        "--regen:Regenerate all project templates"
+        "--rm:Remove project's templates"
+        "--setup:Run setup scripts for overseer include"
+      )
       ;;
   esac
+
+  # If flags were populated for the command, pass the array to _describe
+  if [[ ${#flags[@]} -gt 0 ]]; then
+    _describe "flags" flags
+  fi
 }
 
 forge "$@"
