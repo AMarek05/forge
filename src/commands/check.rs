@@ -134,7 +134,7 @@ pub fn check_wl(path: &Path, lang_dir: Option<&Path>, include_dir: Option<&Path>
 
 /// Validate raw .wl syntax without building a full WlFile.
 /// Collects line-level errors: malformed lines, bad array syntax.
-fn validate_syntax(content: &str, path: &Path) -> Vec<CheckError> {
+fn validate_syntax(content: &str, _path: &Path) -> Vec<CheckError> {
     let mut errors = vec![];
     let key_re = regex::Regex::new(r#"^([a-z_]+)\s*=\s*(.+)$"#).unwrap();
 
@@ -202,7 +202,7 @@ fn validate_array_syntax(s: &str) -> Result<()> {
                     in_string = true;
                 } else {
                     // Check it's not escaped
-                    let mut backslash_count = 0;
+                    let _backslash_count = 0;
                     // count backslashes before this quote by peeking backwards
                     // (simplified: just require escaped quotes to be \")
                     in_string = false;

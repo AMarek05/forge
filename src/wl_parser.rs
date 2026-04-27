@@ -131,7 +131,7 @@ fn parse_fields(content: &str, path: &Path) -> Result<HashMap<String, String>> {
     Ok(fields)
 }
 
-fn strip_quotes(s: &str) -> String {
+pub(crate) fn strip_quotes(s: &str) -> String {
     let s = s.trim();
     if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
         s[1..s.len() - 1].to_string()
@@ -140,7 +140,7 @@ fn strip_quotes(s: &str) -> String {
     }
 }
 
-fn parse_json_array(s: &str) -> Vec<String> {
+pub(crate) fn parse_json_array(s: &str) -> Vec<String> {
     let s = s.trim();
     if !s.starts_with('[') || !s.ends_with(']') {
         return vec![];
