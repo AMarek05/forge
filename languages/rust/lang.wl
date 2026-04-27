@@ -2,7 +2,7 @@ name="rust"
 desc="Rust project with cargo and rustflake"
 path="Code/Rust"
 direnv="use_flake"
-requires=["cargo", "rustflake"]
+requires=[]
 setup_priority="10"
 
 build="cargo build"

@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a Rust project with cargo and rustflake
-# forge_requires: cargo, rustflake
+# forge_provides: 
 
 set -e
 

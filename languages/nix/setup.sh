@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a Nix flake project with direnv
-# forge_requires: nix
+# forge_provides: 
 
 set -e
 

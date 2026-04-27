@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a C++ project with cmake
-# forge_requires: cmake, g++
+# forge_provides: 
 
 set -e
 

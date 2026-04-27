@@ -134,11 +134,10 @@ Run with: nix eval --file tests/module/test-module.nix
     content contains ''desc="Rust project with cargo"'';
     content contains ''path="Code/Rust"'';
     content contains ''direnv="use flake"'';
-    content contains ''requires=["git","cargo","direnv"]'';
   };
 }
 ```
-**expected**: lang.wl has name, desc, path, direnv, requires
+**expected**: lang.wl has name, desc, path, direnv
 
 ---
 
@@ -208,12 +207,11 @@ Run with: nix eval --file tests/module/test-module.nix
 
   want = {
     parsed.provides = ["overseer"];
-    parsed.requires = [];
     parsed.version = "1.0";
   };
 }
 ```
-**expected**: overseer include.wl has provides=["overseer"], requires=[]
+**expected**: overseer include.wl has provides=["overseer"]
 
 ---
 

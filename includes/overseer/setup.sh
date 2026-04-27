@@ -1,7 +1,7 @@
 #!/bin/bash
 # forge_description: Add overseer.nvim task templates for the project
 # forge_provides: overseer
-# forge_requires:
+# forge_provides: 
 
 set -e
 

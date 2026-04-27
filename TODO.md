@@ -122,7 +122,7 @@ return {
 
 ### Overseer integration ✅
 - [x] `includes/overseer/setup.sh` — writes per-project Lua templates
-- [x] `includes/overseer/include.wl` — `provides=["overseer"]`, `requires=[]`
+- [x] `includes/overseer/include.wl` — `provides=["overseer"]`
 - [x] `src/commands/overseer.rs` — all subcommands implemented
 - [x] `forge overseer-def <name>` — hooked up to CLI
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a Java project with maven
-# forge_requires: maven, java
+# forge_provides: 
 
 set -e
 

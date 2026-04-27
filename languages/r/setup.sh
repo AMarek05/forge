@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold an R project with renv
-# forge_requires: R, renv
+# forge_provides: 
 
 set -e
 

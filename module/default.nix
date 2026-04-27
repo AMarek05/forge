@@ -24,11 +24,6 @@ let
     description = "Rust project with cargo";
     path = "Code/Rust";
     direnv = "use flake";
-    requires = [
-      "git"
-      "cargo"
-      "direnv"
-    ];
     buildInputs = [
       "rustc"
       "cargo"
@@ -41,11 +36,6 @@ let
     description = "Python project with poetry";
     path = "Code/Python";
     direnv = "use flake";
-    requires = [
-      "git"
-      "poetry"
-      "direnv"
-    ];
     buildInputs = [
       "python311"
       "poetry"
@@ -56,11 +46,6 @@ let
     description = "C project with gcc and make";
     path = "Code/C";
     direnv = "use flake";
-    requires = [
-      "git"
-      "gcc"
-      "make"
-    ];
     buildInputs = [
       "gcc"
       "make"
@@ -71,11 +56,6 @@ let
     description = "C++ project with cmake";
     path = "Code/C++";
     direnv = "use flake";
-    requires = [
-      "git"
-      "cmake"
-      "clang"
-    ];
     buildInputs = [
       "cmake"
       "clang"
@@ -86,11 +66,6 @@ let
     description = "Java project with maven";
     path = "Code/Java";
     direnv = "use flake";
-    requires = [
-      "git"
-      "maven"
-      "java"
-    ];
     buildInputs = [
       "maven"
       "jdk17"
@@ -101,10 +76,6 @@ let
     description = "Nix flake project";
     path = "Code/Nix";
     direnv = "use flake";
-    requires = [
-      "git"
-      "nix"
-    ];
     buildInputs = [ "nix" ];
   };
 
@@ -112,11 +83,6 @@ let
     description = "R project with renv";
     path = "Code/R";
     direnv = "use flake";
-    requires = [
-      "git"
-      "R"
-      "renv"
-    ];
     buildInputs = [
       "R"
       "renv"
@@ -127,7 +93,6 @@ let
     description = "Plain text notes — no flake, no toolchain";
     path = "Notes/txt";
     direnv = "none";
-    requires = [ "git" ];
     buildInputs = [ ];
   };
 
@@ -150,16 +115,11 @@ let
       "git-init"
       "git-remote"
     ];
-    requires = [
-      "git"
-      "gh"
-    ];
   };
 
   overseer-include = {
     description = "Add overseer task runner integration";
     provides = [ "overseer" ];
-    requires = [ ];
   };
 
   all-includes = {
@@ -248,7 +208,6 @@ let
       desc="${lang.description}"
       path="${lang.path}"
       direnv="${lang.direnv}"
-      requires=[${lib.concatMapStringsSep "," (r: "\"${r}\"") lang.requires}]
       setup_priority="10"
       build=""
       run=""
@@ -260,7 +219,7 @@ let
     name: inc:
     builtins.toFile "include.wl" (
       builtins.toJSON {
-        inherit (inc) description provides requires;
+        inherit (inc) description provides;
         version = "1.0";
       }
     );

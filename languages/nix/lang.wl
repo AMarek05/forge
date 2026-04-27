@@ -2,7 +2,7 @@ name="nix"
 desc="Nix flake project"
 path="Code/nix"
 direnv="use_flake"
-requires=["nix"]
+requires=[]
 setup_priority="10"
 
 build="nix build"

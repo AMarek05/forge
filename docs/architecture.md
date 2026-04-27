@@ -88,7 +88,7 @@ On `forge create`:
 ### Language packs (`languages/<lang>/`)
 
 Each language directory contains:
-- `lang.wl` — metadata (name, desc, path, direnv, requires, build/run/test/check)
+- `lang.wl` — metadata (name, desc, path, direnv, build/run/test/check)
 - `setup.sh` — scaffolding script (writes .envrc, renders flake.nix.template, runs direnv allow)
 - `flake.nix.template` — per-project flake template with `{{PROJECT_NAME}}` placeholder
 

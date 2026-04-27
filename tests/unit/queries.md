@@ -130,7 +130,6 @@ Run with: cargo test --manifest-path projects/sync-launcher/Cargo.toml
     desc="Rust project with cargo"
     path="Code/Rust"
     direnv="use flake"
-    requires=["git","cargo","direnv"]
     build=""
     run=""
     test=""
@@ -142,7 +141,6 @@ Run with: cargo test --manifest-path projects/sync-launcher/Cargo.toml
     desc = "Rust project with cargo";
     path = "Code/Rust";
     direnv = "use flake";
-    requires = ["git", "cargo", "direnv"];
     build = None;
     run = None;
     test = None;

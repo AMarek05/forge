@@ -47,9 +47,6 @@ fn run_list() -> Result<()> {
             if !inc.provides.is_empty() {
                 println!("  provides: {}", inc.provides.join(", "));
             }
-            if !inc.requires.is_empty() {
-                println!("  requires: {}", inc.requires.join(", "));
-            }
             println!();
         }
     }
@@ -72,9 +69,6 @@ fn run_show(name: &str) -> Result<()> {
     println!("version: {}", inc.version);
     if !inc.provides.is_empty() {
         println!("provides: {}", inc.provides.join(", "));
-    }
-    if !inc.requires.is_empty() {
-        println!("requires: {}", inc.requires.join(", "));
     }
 
     let _setup_sh = wl_path.parent().unwrap().join("setup.sh");
@@ -108,16 +102,10 @@ fn parse_include_wl(path: &PathBuf) -> Result<IncludeEntry> {
         .map(|s| parse_json_array(&s))
         .unwrap_or_default();
 
-    let requires = fields.get("requires")
-        .cloned()
-        .map(|s| parse_json_array(&s))
-        .unwrap_or_default();
-
     Ok(IncludeEntry {
         name: fields.get("name").cloned().unwrap_or_default(),
         desc: fields.get("desc").cloned().unwrap_or_default(),
         provides,
-        requires,
         version: fields.get("version").cloned().unwrap_or_default(),
         fields,
         dir: path.parent().unwrap_or(&PathBuf::new()).to_path_buf(),

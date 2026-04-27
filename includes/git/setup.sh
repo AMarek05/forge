@@ -1,7 +1,7 @@
 #!/bin/bash
 # forge_description: Initialize git repo and set GitHub remote
 # forge_provides: git-init, git-remote
-# forge_requires: git, gh
+# forge_provides: 
 
 set -e
 

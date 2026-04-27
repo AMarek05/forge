@@ -12,7 +12,6 @@ pub struct IncludeEntry {
     pub name: String,
     pub desc: String,
     pub provides: Vec<String>,
-    pub requires: Vec<String>,
     pub version: String,
     /// Fields this include contributes (merged into .wl on create)
     pub fields: HashMap<String, String>,
@@ -71,16 +70,10 @@ fn parse_include_wl(path: &PathBuf, name: String, dir: PathBuf) -> Result<Includ
         .map(|s| parse_json_array(&s))
         .unwrap_or_default();
 
-    let requires = fields.get("requires")
-        .cloned()
-        .map(|s| parse_json_array(&s))
-        .unwrap_or_default();
-
     Ok(IncludeEntry {
         name: fields.get("name").cloned().unwrap_or(name),
         desc: fields.get("desc").cloned().unwrap_or_default(),
         provides,
-        requires,
         version: fields.get("version").cloned().unwrap_or_default(),
         fields,
         dir,
@@ -117,7 +110,7 @@ fn parse_json_array(s: &str) -> Vec<String> {
 pub fn merge_include_fields(project_fields: &mut HashMap<String, String>, includes: &[IncludeEntry]) {
     for inc in includes {
         for (key, value) in &inc.fields {
-            if key == "provides" || key == "requires" || key == "desc" || key == "version" || key == "name" {
+            if key == "provides" || key == "desc" || key == "version" || key == "name" {
                 continue;
             }
             if key == "includes" || key == "tags" {

@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a C project with make
-# forge_requires: make, gcc
+# forge_provides: 
 
 set -e
 

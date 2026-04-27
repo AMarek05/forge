@@ -1,7 +1,7 @@
 #!/bin/bash
 # forge_description: Scaffold a plain text notes project — no toolchain
 # forge_provides: txt-notes
-# forge_requires:
+# forge_provides: 
 
 set -e
 

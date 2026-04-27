@@ -21,7 +21,6 @@ pub struct Language {
     pub desc: String,
     pub path: String,
     pub direnv: String,
-    pub requires: Vec<String>,
     pub setup_priority: i32,
     pub build: Option<String>,
     pub run: Option<String>,
@@ -57,11 +56,6 @@ pub fn parse_lang_wl(path: &Path) -> Result<Language> {
         desc: fields.get("desc").cloned().unwrap_or_default(),
         path: fields.get("path").cloned().unwrap_or_default(),
         direnv: fields.get("direnv").cloned().unwrap_or_default(),
-        requires: fields
-            .get("requires")
-            .cloned()
-            .map(|s| parse_json_array(&s))
-            .unwrap_or_default(),
         setup_priority: fields
             .get("setup_priority")
             .and_then(|s| s.parse().ok())

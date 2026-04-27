@@ -1,6 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a Python project with poetry
-# forge_requires: poetry
+# forge_provides: 
 
 set -e
 

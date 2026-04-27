@@ -2,7 +2,7 @@ name="java"
 desc="Java project with maven"
 path="Code/Java"
 direnv="use_maven"
-requires=["maven", "java"]
+requires=[]
 setup_priority="10"
 
 build="mvn package"
