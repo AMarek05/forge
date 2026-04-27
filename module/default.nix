@@ -412,8 +412,7 @@ in
 
     programs.zsh = {
       enable = true;
-
-      initExtraBeforeCompInit = ''
+      initContent = lib.mkOrder 550 ''
         fpath=("${config.home.homeDirectory}/${compDir}" $fpath)
       '';
     };
