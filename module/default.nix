@@ -406,14 +406,9 @@ in
 
     home.packages = lib.mkIf (cfg.package != null) [ cfg.package ];
 
-    programs.zsh.initContent = ''
-      # Install forge zsh completion — project names loaded from ~/.forge-index.json
-      local forge_comp="${zsh-completion}"
-      local comp_dir="${config.home.homeDirectory}/.local/share/zsh/site-functions"
-      mkdir -p "$comp_dir"
-      print -r -- "$forge_comp" > "$comp_dir/_forge"
-      fpath=("$comp_dir" $fpath)
-    '';
+    home.file."share/zsh/site-functions/_forge" = {
+      text = zsh-completion;
+    };
 
     home.sessionVariables = {
       FORGE_SYNC_BASE = cfg.syncBase;
