@@ -50,7 +50,45 @@ _forge() {
         "--dry-run:Print actions without executing"
       )
       ;;
-    remove|list|edit|open|overseer-def)
+    remove)
+      # remove takes a project name at position 3, no other flags
+      if (( CURRENT == 3 )); then
+        local -a projects
+        projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+        if (( ${#projects[@]} > 0 )); then
+          _describe "projects" projects
+        else
+          _message "no projects found — run forge sync first"
+        fi
+      fi
+      ;;
+    list)
+      # list optionally takes a project name, plus --tags flag
+      if (( CURRENT == 3 )) && [[ "${words[3]}" != -* ]]; then
+        local -a projects
+        projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+        if (( ${#projects[@]} > 0 )); then
+          _describe "projects" projects
+        fi
+      else
+        flags=("--help:Show help" "--tags:Filter by tags (comma-separated)")
+      fi
+      ;;
+    cd)
+      # cd takes project at pos 3, --print at pos 4+
+      if (( CURRENT == 3 )); then
+        local -a projects
+        projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
+        if (( ${#projects[@]} > 0 )); then
+          _describe "projects" projects
+        else
+          _message "no projects found — run forge sync first"
+        fi
+      else
+        flags=("--print:Print path instead of cd directive")
+      fi
+      ;;
+    edit|open|overseer-def)
       # These take a project name at position 3
       if (( CURRENT == 3 )); then
         local -a projects
@@ -62,19 +100,8 @@ _forge() {
         fi
       fi
       ;;
-    cd)
-      # cd takes project at pos 3, --help at pos 4+
-      if (( CURRENT == 3 )); then
-        local -a projects
-        projects=($(@JQ@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null))
-        if (( ${#projects[@]} > 0 )); then
-          _describe "projects" projects
-        else
-          _message "no projects found — run forge sync first"
-        fi
-      else
-        flags=("--help:Show help")
-      fi
+    sync)
+      # no additional arguments
       ;;
     session)
       flags=(
