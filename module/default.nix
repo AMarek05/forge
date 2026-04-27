@@ -390,8 +390,8 @@ let
           ;;
         remove|list|cd|edit|open|overseer-def)
           local -a projects
-          projects=(${(f "$(@jq@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null)"})
-          if (( ${#projects} )); then
+          projects=(${(f "\$(@jq@ -r '.projects[].name' ~/.forge-index.json 2>/dev/null)"})
+          if (( ''${#projects} )); then
             _describe "projects" projects
           else
             _message "no projects found — run forge sync first"
