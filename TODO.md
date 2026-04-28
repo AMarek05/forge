@@ -4,7 +4,7 @@
 
 ---
 
-## Current Status (2026-04-27)
+## Current Status (2026-04-29)
 
 ### What's done
 
@@ -147,14 +147,15 @@ return {
   - `forge check` (no arg) runs on index state file and all known projects
   - `forge check <name>` runs on single project
 
-### Field prefill
-- [ ] `forge create <name> --lang rust --include git` — generates `.wl` with all fields pre-declared:
+### Field prefill ✅
+- [x] `forge create <name> --lang rust --include git` — generates `.wl` with all fields pre-declared:
     - `name=<name>` from arg; `lang=rust`, `includes=[git]` from flags
     - `desc=""`, `tags=[]` — empty, user fills
     - `build`, `run`, `test`, `check` — populated from `lang.wl` defaults
     - `overseer_template` if applicable
     - All fields present, none missing
   - Opens editor on the `.wl` (unless `--no-open`), auto-syncs on close
+  - verify_and_diff on close: syntax check + include diff + field diff + index update + state save
 
 ### Applied-includes tracking (done ✅)
 - [x] Per-project `.forge/applied-includes` tracks which includes have had their setup.sh run
@@ -166,21 +167,25 @@ return {
 - [x] Index: `~/.forge-index.json` → `~/.forge/index.json` with auto-migration from old location
 - [x] Per-project `.forge/state`: tracks all .wl fields, written after every verified edit
 
-### Healthcheck
-- [ ] `forge health` — general system state validator
+### Healthcheck ✅
+- [x] `forge health` — general system state validator
   - Index file (`~/.forge/index.json`): valid JSON, non-empty projects array
   - Each project `.wl`: parseable, no missing required fields
   - Each project `.forge/state`: present and readable
   - Detects and flags: projects with no `name`, duplicate `name` entries, stale `path` pointing to missing directory
-  - `--fix` flag to auto-correct: regenerate missing fields from lang defaults, remove duplicates, restore state from .wl
+  - `--fix` flag to auto-correct: remove stale entries and duplicate name entries, saves updated index
   - Exit code: 0 if healthy, non-zero if issues found
   - Output format:
     ```
     ✅ index.json: valid
-    ⚠️  project "old-project": path ~/sync/Rust/old does not exist
-    ⚠️  project "dup-name": duplicate name (appears in both Rust/dup and Rust/dup-copy)
-    ❌ project "broken": .wl syntax error at line 7 — unclosed bracket
+    ✅ "myproject": .wl valid
+    ⚠️  project "dup-name": duplicate name (appears in both ...)
+    ❌ project "broken": .wl syntax error — ...
     ```
+
+### pick ctrl-e/ctrl-o ✅
+- [x] ctrl-e: opens `.wl` directly in `$EDITOR`
+- [x] ctrl-o: chdirs to project, opens project dir in Oil (`nvim -c Oil .`)
 
 ### End-to-end testing — PENDING
 Requires Adam's environment to verify.
@@ -195,150 +200,5 @@ Requires Adam's environment to verify.
 - [ ] `:OverseerRun` in nvim — shows forge tasks for a project
 - [ ] Test `forge pick` ctrl-o opens nvim with Oil
 - [ ] Test `forge session x --open` opens nvim with Oil
-
-### Unit tests for `forge check`
-Add to `tests/unit/queries.md`:
-
-#### `check_wl` — valid .wl returns no errors
-```nix
-{
-  FILE = ''
-    name="test"
-    lang="rust"
-    desc="A test project"
-    tags=["cli"]
-    includes=[]
-    build="cargo build"
-  '';
-  want = {
-    errors = [];
-    warnings = [];
-  };
-}
-```
-**expected**: check_wl returns empty errors and warnings
-
-#### `check_wl` — syntax error returns line number
-```nix
-{
-  FILE = ''
-    name="test"
-    lang="rust"
-    this line is malformed
-  '';
-  want = {
-    errors.length = 1;
-    errors[0].line = 3;
-    errors[0].msg contains "malformed line";
-  };
-}
-```
-**expected**: error at line 3, messages mention line number
-
-#### `check_wl` — unclosed bracket
-```nix
-{
-  FILE = ''
-    name="test"
-    tags=["cli
-  '';
-  want = {
-    errors.length = 1;
-    errors[0].line = 2;
-    errors[0].msg contains "unclosed";
-  };
-}
-```
-**expected**: error at line 2, mentions unclosed bracket
-
-#### `check_wl` — unknown lang
-```nix
-{
-  FILE = ''
-    name="test"
-    lang="rustt"
-  '';
-  want = {
-    errors.length = 1;
-    errors[0].msg contains "no such language";
-  };
-}
-```
-**expected**: error mentions unknown lang `rustt`
-
-#### `check_wl` — unknown include
-```nix
-{
-  FILE = ''
-    name="test"
-    includes=["overseerr"]
-  '';
-  want = {
-    errors.length = 1;
-    errors[0].msg contains "no such include";
-  };
-}
-```
-**expected**: error mentions unknown include
-
-#### `check_wl` — empty build produces warning
-```nix
-{
-  FILE = ''
-    name="test"
-    lang="rust"
-    build=""
-  '';
-  want = {
-    errors = [];
-    warnings.length = 1;
-    warnings[0].msg contains "build";
-    warnings[0].msg contains "empty";
-  };
-}
-```
-**expected**: warning that build is empty, overseer will fall back
-
-#### `check_wl` — duplicate key
-```nix
-{
-  FILE = ''
-    name="test"
-    name="test2"
-  '';
-  want = {
-    errors.length = 1;
-    errors[0].msg contains "duplicate";
-  };
-}
-```
-**expected**: error mentions duplicate key `name`
-
-### Integration tests for `forge check`
-Add to `tests/integration/suite.sh`:
-```sh
-# forge check — all projects pass
-forge check && echo "check all: PASS"
-
-# forge check — single project
-forge check some-project && echo "check one: PASS"
-
-# forge check — invalid .wl exits non-zero
-cd "$FORGE_SYNC_BASE/test-bad"
-echo 'name="bad"
-  tags=[' > .wl
-forge check test-bad && echo "FAIL: should have errored" || echo "check bad: PASS"
-```
-
-## Test suite
-
-Run with: `cd tests && ./run.sh` (or `./run.sh <target>`)
-
-```
-tests/
-├── run.sh                    # test runner (all|unit|module|integration|shell)
-├── unit/queries.md           # Rust unit test queries (wl_parser, index, config)
-├── module/queries.md         # Nix module eval test queries
-├── integration/suite.sh      # end-to-end forge workflow tests
-└── shell/completion-tests.sh # completion generation + --help/--version smoke
-```
+- [ ] Test `forge edit <name>` — change name, verify index updated
+- [ ] Test `forge health --fix` — verify it removes stale/duplicate entries
