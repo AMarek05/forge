@@ -1,5 +1,165 @@
 ---
 
+### applied_includes: load/save/diff helpers
+
+#### load — returns empty vec when file missing
+```nix
+{
+  setup = ''PROJECT_DIR=$(mktemp -d)'';
+  call = ''applied_includes::load(&PathBuf::from(project_dir))'';
+  want = ''Ok(vec![])'';
+}
+```
+**expected**: load returns empty vec when .forge/applied-includes doesn't exist
+
+#### load — reads single include
+```nix
+{
+  setup = ''
+    PROJECT_DIR=$(mktemp -d)
+    mkdir "$PROJECT_DIR/.forge"
+    echo "git" > "$PROJECT_DIR/.forge/applied-includes"
+  '';
+  call = ''applied_includes::load(&PathBuf::from(project_dir))'';
+  want = ''Ok(vec!["git".to_string()])'';
+}
+```
+**expected**: load reads and parses applied-includes correctly
+
+#### diff_applied — returns new includes only
+```nix
+{
+  setup = ''current = vec!["git", "overseer"]; applied = vec!["git"]'';
+  call = ''applied_includes::diff_applied(&current, &applied)'';
+  want = ''vec!["overseer"]'';
+}
+```
+**expected**: diff returns only includes not yet applied
+
+#### diff_applied — returns empty when all applied
+```nix
+{
+  setup = ''current = vec!["git"]; applied = vec!["git"]'';
+  call = ''applied_includes::diff_applied(&current, &applied)'';
+  want = ''vec![]'';
+}
+```
+**expected**: no new includes means empty diff
+
+#### save — writes then load roundtrip
+```nix
+{
+  setup = ''PROJECT_DIR=$(mktemp -d)'';
+  call = ''
+    let inc = vec!["git", "overseer"];
+    applied_includes::save(&PathBuf::from(project_dir), &inc)?;
+    applied_includes::load(&PathBuf::from(project_dir))
+  '';
+  want = ''Ok(vec!["git".to_string(), "overseer".to_string()])'';
+}
+```
+**expected**: save then load returns the same includes
+
+---
+
+### project_state: load/save/from_wl/diff
+
+#### from_wl — extracts all fields
+```nix
+{
+  setup = ''
+    let wl = WlFile {
+      name: Some("myproject".into()),
+      lang: Some("rust".into()),
+      desc: Some("A test project".into()),
+      tags: vec!["cli", "wasm"],
+      includes: vec!["git"],
+      build: Some("cargo build".into()),
+      run: Some("cargo run".into()),
+      test: Some("cargo test".into()),
+      check: Some("cargo clippy".into()),
+      overseer_template: None,
+      setup: None,
+    };
+  '';
+  call = ''ProjectState::from_wl(&wl, 1234567890)'';
+  want = ''ProjectState { name: "myproject".into(), lang: "rust".into(), desc: "A test project".into(), tags: vec!["cli", "wasm"], includes: vec!["git"], build: "cargo build".into(), run: "cargo run".into(), test: "cargo test".into(), check: "cargo clippy".into(), last_wl_mtime: 1234567890 }'';
+}
+```
+**expected**: from_wl correctly populates all fields from WlFile
+
+#### diff — detects changed fields
+```nix
+{
+  setup = ''
+    let old = ProjectState {
+      name: "myproject".into(),
+      lang: "rust".into(),
+      desc: "old desc".into(),
+      tags: vec![],
+      includes: vec![],
+      build: "cargo build".into(),
+      run: "".into(),
+      test: "".into(),
+      check: "".into(),
+      last_wl_mtime: 0,
+    };
+    let new = ProjectState {
+      name: "renamed".into(),
+      lang: "rust".into(),
+      desc: "new desc".into(),
+      tags: vec!["cli"],
+      includes: vec!["git"],
+      build: "cargo build".into(),
+      run: "".into(),
+      test: "".into(),
+      check: "".into(),
+      last_wl_mtime: 999,
+    };
+  '';
+  call = ''old.diff(&new)'';
+  want = ''vec!["name", "desc", "tags", "includes", "last_wl_mtime"]'';
+}
+```
+**expected**: diff correctly identifies changed field names
+
+#### diff — empty when identical
+```nix
+{
+  setup = ''same = ProjectState { name: "test".into(), lang: "rust".into(), desc: "".into(), tags: vec![], includes: vec![], build: "".into(), run: "".into(), test: "".into(), check: "".into(), last_wl_mtime: 0 }'';
+  call = ''same.diff(&same)'';
+  want = ''vec![]'';
+}
+```
+**expected**: diff of identical states is empty
+
+#### save and load — roundtrip
+```nix
+{
+  setup = ''PROJECT_DIR=$(mktemp -d)'';
+  call = ''
+    let state = ProjectState {
+      name: "myproject".into(),
+      lang: "rust".into(),
+      desc: "A cool project".into(),
+      tags: vec!["cli", "wasm"],
+      includes: vec!["git", "overseer"],
+      build: "cargo build".into(),
+      run: "cargo run".into(),
+      test: "cargo test".into(),
+      check: "cargo clippy".into(),
+      last_wl_mtime: 1234567890,
+    };
+    state.save(&PathBuf::from(project_dir))?;
+    ProjectState::load(&PathBuf::from(project_dir))
+  '';
+  want = ''Ok(state)'';
+}
+```
+**expected**: save then load returns identical state
+
+---
+
 ### check: validate .wl syntax and field integrity
 
 #### check_wl — valid .wl returns no errors

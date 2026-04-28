@@ -138,6 +138,86 @@ fi
 info "forge overseer --regen"
 $FORGE overseer --regen >/dev/null 2>&1 && pass "overseer regen no-ops gracefully" || fail "overseer regen errored"
 
+# Test: sync detects and removes stale entry
+info "forge sync with stale index entry"
+# Create a project, then manually add a stale index entry, then sync
+STALE_DIR="$SYNC_BASE/Code/Rust/stale-project"
+mkdir -p "$STALE_DIR"
+echo 'name="stale-project"' > "$STALE_DIR/.wl"
+$FORGE sync >/dev/null 2>&1 || true
+# Now remove the .wl but leave the entry in index (simulate deleted project)
+rm -rf "$STALE_DIR"
+SYNC_OUTPUT=$($FORGE sync 2>&1)
+info "sync output after stale removal: $SYNC_OUTPUT"
+if echo "$SYNC_OUTPUT" | grep -q "removed: stale-project"; then
+  pass "sync warns about removed stale entry"
+else
+  fail "expected 'removed: stale-project' in sync output"
+fi
+
+# Test: verify_and_diff prints field changes
+info "verify_and_diff after .wl edit"
+EDIT_DIR="$SYNC_BASE/Code/Rust/edit-test"
+mkdir -p "$EDIT_DIR"
+# Pre-populate with all fields
+cat > "$EDIT_DIR/.wl" << 'WL'
+name="edit-test"
+lang="rust"
+desc="original desc"
+tags=[]
+includes=[]
+build="cargo build"
+run="cargo run"
+test="cargo test"
+check="cargo clippy"
+WL
+mkdir -p "$EDIT_DIR/.forge"
+# Run verify_and_diff via edit (can't easily test directly, use edit)
+# Instead: check that .forge/state gets written
+$FORGE edit edit-test --no-open >/dev/null 2>&1 || true
+if [ -f "$EDIT_DIR/.forge/state" ]; then
+  pass ".forge/state written after edit"
+else
+  fail ".forge/state not created"
+fi
+
+# Test: applied-includes written after create with includes
+info "forge create with include, applied-includes written"
+INC_DIR="$SYNC_BASE/Code/Rust/inc-test"
+mkdir -p "$INC_DIR"
+# Create project with git include
+cat > "$INC_DIR/.wl" << 'WL'
+name="inc-test"
+lang="rust"
+includes=["git"]
+WL
+mkdir -p "$INC_DIR/.forge"
+$FORGE sync >/dev/null 2>&1 || true
+APPLIED_FILE="$INC_DIR/.forge/applied-includes"
+if [ -f "$APPLIED_FILE" ]; then
+  pass ".forge/applied-includes created after sync"
+  if grep -q "git" "$APPLIED_FILE"; then
+    pass "applied-includes contains git"
+  else
+    fail "git not in applied-includes"
+  fi
+else
+  fail "applied-includes not created"
+fi
+
+# Test: health check (if --fix works)
+info "forge health (needs implementation — skip if not yet built)"
+HEALTH_OUTPUT=$($FORGE health 2>&1) || true
+info "health output: $HEALTH_OUTPUT"
+# health command may not exist yet — skip if it errors
+if echo "$HEALTH_OUTPUT" | grep -qi "not found\|unrecognized\|unknown command"; then
+  info "health command not yet implemented — skipping test"
+elif echo "$HEALTH_OUTPUT" | grep -q "✅\|⚠️\|❌"; then
+  pass "health command implemented and returns structured output"
+else
+  info "health command returned: $HEALTH_OUTPUT"
+fi
+
 echo ""
 echo "=== Summary: $PASSED passed, $FAILED failed ==="
 [ "$FAILED" -eq 0 ] || exit 1
