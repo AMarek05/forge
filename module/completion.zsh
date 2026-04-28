@@ -30,7 +30,8 @@ _forge() {
         "include:List or show include modules"
         "lang:List or add language packs"
         "overseer:Run or manage overseer.nvim task templates"
-        "overseer-def:Print JSON overseer task definition"
+        "check:Validate .wl syntax and field integrity"
+        "health:Validate system state and report issues"
         "edit:Edit project's .wl in \$EDITOR"
         "open:Open project directory in \$EDITOR"
       )
@@ -77,6 +78,14 @@ _forge() {
             '--regen[Regenerate all project templates]' \
             '--rm[Remove project templates]' \
             '--setup[Run setup scripts for overseer include]'
+          ;;
+        check|health)
+          _arguments $common_args \
+            '--fix[Auto-fix detected issues]'
+          ;;
+        check)
+          _arguments $common_args \
+            '1:project name:'
           ;;
         remove|cd|edit|open)
           # These take a project name AND the common help flag
