@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use crate::verify_and_diff::verify_and_diff;
 use crate::config::ForgeConfig;

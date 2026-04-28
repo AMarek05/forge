@@ -5,7 +5,7 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod};
