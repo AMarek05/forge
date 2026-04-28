@@ -51,7 +51,7 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
         vec![]
     };
 
-    let wl_content = build_wl_content(&name, &lang.name, &lang, wl_exists.then_some(&wl_path), &includes)?;
+    let wl_content = build_wl_content(&name, &lang, wl_exists.then_some(&wl_path), &includes)?;
 
     fs::write(&wl_path, &wl_content)
         .with_context(|| format!("failed to write {}", wl_path.display()))?;
@@ -92,7 +92,7 @@ fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
         .with_context(|| format!("language '{}' not found in registry", lang_name))
 }
 
-fn build_wl_content(name: &str, lang_name: &str, lang: &Language, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {
+fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {
     // Pre-declare all fields when creating a new project.
     // When re-editing an existing .wl, carry over user-modified values.
     let mut lines = vec![
