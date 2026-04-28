@@ -21,7 +21,7 @@ fn now_iso() -> String {
     format!("{}", now)
 }
 
-pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Option<String>, path: Option<String>, run: Option<String>, editor: bool, dry_run: bool) -> Result<()> {
+pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Option<String>, path: Option<String>, _run: Option<String>, editor: bool, dry_run: bool) -> Result<()> {
     let config = ForgeConfig::load()?;
     let lang = load_language(&lang, &config)?;
 
@@ -97,7 +97,7 @@ fn build_wl_content(name: &str, lang_name: &str, lang: &Language, existing_wl: O
     // When re-editing an existing .wl, carry over user-modified values.
     let mut lines = vec![
         format!("name=\"{}\"", name),
-        format!("lang=\"{}\"", lang),
+        format!("lang=\"{}\"", lang.name),
         format!("desc=\"\""),
         String::from("tags=[]"),
     ];
