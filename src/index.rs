@@ -1,8 +1,10 @@
-//! Read/write `~/.forge-index.json` — the cached project index.
+//! Read/write `~/.forge/index.json` — the project index.
 //!
-//! Schema (v2 — .wl is source of truth for project metadata):
-//!   name, lang, path  → structural, stored in index
-//!   desc, tags, includes, build/run/test/check → read from .wl at display time
+//! Index stores structural fields only (name, lang, path, added_at,
+//! last_opened, open_count). All project metadata (desc, tags, includes,
+//! build/run/test/check) lives in each project's .forge/state file.
+//!
+//! Index location: ~/.forge/index.json (migrated from ~/.forge-index.json).
 
 use std::fs;
 use std::path::PathBuf;
@@ -30,7 +32,7 @@ pub struct ProjectIndex {
 impl ProjectIndex {
     pub fn new(sync_base: PathBuf) -> Self {
         ProjectIndex {
-            version: 2,
+            version: 3,
             sync_base,
             projects: vec![],
         }
@@ -44,6 +46,17 @@ pub fn load_index() -> Result<ProjectIndex> {
 
 pub fn load_index_from(path: &PathBuf) -> Result<ProjectIndex> {
     if !path.exists() {
+        // Migrate from old location (~/.forge-index.json) if needed
+        if let Some(old) = old_index_path() {
+            if old.exists() {
+                let content = fs::read_to_string(&old)?;
+                let index: ProjectIndex = serde_json::from_str(&content)
+                    .context("failed to parse old index")?;
+                save_index_to(&index, &index_path()?)?;
+                fs::remove_file(&old).ok();
+                return Ok(index);
+            }
+        }
         let home = dirs::home_dir().unwrap_or_default();
         return Ok(ProjectIndex::new(home.join("sync")));
     }
@@ -78,8 +91,12 @@ pub fn save_index_to(index: &ProjectIndex, path: &PathBuf) -> Result<()> {
 
 fn index_path() -> Result<PathBuf> {
     if let Ok(base) = std::env::var("FORGE_BASE") {
-        return Ok(PathBuf::from(base).join(".forge-index.json"));
+        return Ok(PathBuf::from(base).join("index.json"));
     }
     let home = dirs::home_dir().context("no home dir")?;
-    Ok(home.join(".forge-index.json"))
+    Ok(home.join(".forge").join("index.json"))
+}
+
+fn old_index_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|h| h.join(".forge-index.json"))
 }

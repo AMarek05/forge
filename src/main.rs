@@ -1,6 +1,7 @@
 mod applied_includes;
 mod cli;
 mod commands;
+mod project_state;
 mod verify_and_diff;
 mod config;
 mod include;
