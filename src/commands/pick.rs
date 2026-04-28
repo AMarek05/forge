@@ -139,13 +139,8 @@ pub fn run(tags: Option<String>) -> Result<()> {
         "ctrl-e" => {
             // Edit .wl in $EDITOR — re-read .wl for new includes after editor close
             let wl_path = std::path::PathBuf::from(&project_path).join(".wl");
-            std::env::set_current_dir(&project_path)?;
             let editor = &config.editor;
-            let cmd = if editor.contains("nvim") {
-                format!("{} -c Oil {}", editor, wl_path.to_string_lossy())
-            } else {
-                format!("{} {}", editor, wl_path.to_string_lossy())
-            };
+            let cmd = format!("{} {}", editor, wl_path.to_string_lossy());
             Command::new("sh")
                 .args(["-c", &cmd])
                 .status()?;
@@ -154,14 +149,10 @@ pub fn run(tags: Option<String>) -> Result<()> {
             verify_and_diff(&std::path::PathBuf::from(&project_path), &config)?;
         }
         "ctrl-o" => {
-            // Open project directory in $EDITOR
-            std::env::set_current_dir(&project_path)?;
+            // Open project directory in $EDITOR with Oil
             let editor = &config.editor;
-            let cmd = if editor.contains("nvim") {
-                format!("{} -c Oil", editor)
-            } else {
-                editor.clone()
-            };
+            let cmd = format!("{} -c Oil .", editor);
+            std::env::set_current_dir(&project_path)?;
             Command::new("sh")
                 .args(["-c", &cmd])
                 .status()?;
