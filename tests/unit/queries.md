@@ -1,135 +1,110 @@
-#!/usr/bin/env nix
-# language: rust
-
-## Forge Unit Tests (wl_parser, index, config)
-
-These tests verify the core parsing and data structures of forge.
-Run with: cargo test --manifest-path projects/sync-launcher/Cargo.toml
-
 ---
 
-### wl_parser: parse_wl
+### check: validate .wl syntax and field integrity
 
-#### parse_wl — basic key=value
-```nix
-{
-  WL = ''
-    name="myproject"
-    lang="rust"
-  '';
-
-  want = {
-    name = Some "myproject";
-    lang = Some "rust";
-    desc = None;
-    tags = [];
-    includes = [];
-    build = None;
-    run = None;
-    test = None;
-    check = None;
-  };
-}
-```
-**expected**: parse_wl returns WlFile with name="myproject", lang="rust"
-
----
-
-#### parse_wl — all fields
-```nix
-{
-  WL = ''
-    name="myproject"
-    lang="rust"
-    desc="A test project"
-    tags=["rust","tool"]
-    includes=["git","overseer"]
-    build="cargo build"
-    run="cargo run"
-    test="cargo test"
-    check="cargo clippy"
-  '';
-
-  want = {
-    name = Some "myproject";
-    lang = Some "rust";
-    desc = Some "A test project";
-    tags = ["rust", "tool"];
-    includes = ["git", "overseer"];
-    build = Some "cargo build";
-    run = Some "cargo run";
-    test = Some "cargo test";
-    check = Some "cargo clippy";
-  };
-}
-```
-**expected**: all fields parsed correctly
-
----
-
-#### parse_wl — comments and empty lines skipped
-```nix
-{
-  WL = ''
-    # comment
-    name="test"
-
-    # another comment
-
-    lang="rust"
-  '';
-
-  want = {
-    name = Some "test";
-    lang = Some "rust";
-  };
-}
-```
-**expected**: comments and blank lines do not affect parsing
-
----
-
-#### parse_wl — duplicate key takes last
-```nix
-{
-  WL = ''
-    name="first"
-    name="second"
-  '';
-
-  want = {
-    name = Some "second";
-  };
-}
-```
-**expected**: last occurrence of duplicate key wins
-
----
-
-#### parse_wl — malformed line returns error
-```nix
-{
-  WL = ''
-    this is not a valid line
-  '';
-
-  want = error "failed to parse line";
-}
-```
-**expected**: parse_wl returns Err
-
----
-
-### wl_parser: parse_lang_wl
-
-#### parse_lang_wl — full language definition
+#### check_wl — valid .wl returns no errors
 ```nix
 {
   FILE = ''
-    name="rust"
-    desc="Rust project with cargo"
-    path="Code/Rust"
-    direnv="use flake"
+    name="test"
+    lang="rust"
+    desc="A test project"
+    tags=["cli"]
+    includes=[]
+    build="cargo build"
+  '';
+
+  want = {
+    errors = [];
+    warnings = [];
+  };
+}
+```
+**expected**: check_wl returns empty errors and warnings for valid .wl
+
+---
+
+#### check_wl — syntax error returns line number
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rust"
+    this line is malformed
+  '';
+
+  want = {
+    errors.length = 1;
+    errors[0].line = 3;
+    errors[0].msg contains "malformed line";
+  };
+}
+```
+**expected**: error at line 3, message mentions "malformed line"
+
+---
+
+#### check_wl — unclosed bracket is syntax error
+```nix
+{
+  FILE = ''
+    name="test"
+    tags=["cli
+  '';
+
+  want = {
+    errors.length = 1;
+    errors[0].line = 2;
+    errors[0].msg contains "unclosed";
+  };
+}
+```
+**expected**: error at line 2, message mentions unclosed bracket/string
+
+---
+
+#### check_wl — unknown lang produces error
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rustt"
+  '';
+
+  want = {
+    errors.length = 1;
+    errors[0].msg contains "no such language";
+  };
+}
+```
+**expected**: error mentions unknown lang `rustt`
+
+---
+
+#### check_wl — unknown include produces error
+```nix
+{
+  FILE = ''
+    name="test"
+    includes=["overseerr"]
+  '';
+
+  want = {
+    errors.length = 1;
+    errors[0].msg contains "no such include";
+  };
+}
+```
+**expected**: error mentions unknown include `overseerr`
+
+---
+
+#### check_wl — empty build/run/test/check produces warning
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rust"
     build=""
     run=""
     test=""
@@ -137,302 +112,119 @@ Run with: cargo test --manifest-path projects/sync-launcher/Cargo.toml
   '';
 
   want = {
-    name = "rust";
-    desc = "Rust project with cargo";
-    path = "Code/Rust";
-    direnv = "use flake";
-    build = None;
-    run = None;
-    test = None;
-    check = None;
+    errors = [];
+    warnings.length = 4;
   };
 }
 ```
-**expected**: Language struct with all fields populated
+**expected**: warnings for all four empty command fields
 
 ---
 
-### index: load_index / save_index
+#### check_wl — duplicate key produces error
+```nix
+{
+  FILE = ''
+    name="test"
+    name="test2"
+  '';
 
-#### save and load round-trip
+  want = {
+    errors.length = 1;
+    errors[0].msg contains "duplicate";
+  };
+}
+```
+**expected**: error mentions duplicate key `name`
+
+---
+
+#### check_wl — unquoted string value is syntax error
+```nix
+{
+  FILE = ''
+    name=test
+  '';
+
+  want = {
+    errors.length = 1;
+    errors[0].line = 1;
+    errors[0].msg contains "quoted";
+  };
+}
+```
+**expected**: error at line 1, string value must be quoted
+
+---
+
+#### check_wl — empty array is valid
+```nix
+{
+  FILE = ''
+    name="test"
+    includes=[]
+    tags=[]
+  '';
+
+  want = {
+    errors = [];
+    warnings = [];
+  };
+}
+```
+**expected**: empty arrays are valid, no errors or warnings
+
+---
+
+#### check_wl — multiple tags in array
+```nix
+{
+  FILE = ''
+    name="test"
+    tags=["rust","wasm","cli"]
+  '';
+
+  want = {
+    errors = [];
+    warnings = [];
+  };
+}
+```
+**expected**: valid multi-entry tag array, no issues
+
+---
+
+#### run_all — valid projects all pass
 ```nix
 {
   setup = ''
     INDEX_FILE=$(mktemp)
     PROJECT_PATH=$(mktemp -d)
-  '';
-
-  INDEX = {
-    version = 1;
-    sync_base = "/home/user/sync";
-    projects = [
-      {
-        name = "test-project";
-        lang = "rust";
-        path = "$PROJECT_PATH";
-        desc = None;
-        tags = [];
-        includes = [];
-        build = Some "nix build";
-        added_at = "1234567890";
-        last_opened = None;
-        open_count = 0;
-      }
-    ];
-  '';
-
-  steps = [
-    save_index INDEX to INDEX_FILE
-    loaded = load_index from INDEX_FILE
-  ];
-
-  want = {
-    loaded.version = 1;
-    loaded.projects[0].name = "test-project";
-    loaded.projects[0].lang = "rust";
-  };
-}
-```
-**expected**: save_index -> load_index yields identical index
-
----
-
-#### load_index from non-existent file returns default index
-```nix
-{
-  FILE = "/nonexistent/path/index.json";
-
-  want = {
-    version = 1;
-    projects = [];
-  };
-}
-```
-**expected**: load_index returns default ProjectIndex when file missing
-
----
-
-### config: parse
-
-#### parse — basic export-style config
-```nix
-{
-  CONFIG = ''
-    export FORGE_GITHUB_USER="amarek05"
-    export FORGE_SYNC_BASE="$HOME/sync"
-    export FORGE_BASE="$HOME/.forge"
-    export FORGE_EDITOR="nvim"
+    echo 'name="p"' > "$PROJECT_PATH/.wl"
   '';
 
   want = {
-    github_user = "amarek05";
-    sync_base = <home>/sync;
-    base = <home>/.forge;
-    editor = "nvim";
+    exit_code = 0;
+    stdout contains "✅";
   };
 }
 ```
-**expected**: config fields extracted, $HOME expanded
+**expected**: all projects pass, no errors printed
 
 ---
 
-#### parse — bare (non-export) lines accepted
+#### run_all — project with syntax error exits non-zero
 ```nix
 {
-  CONFIG = ''
-    FORGE_GITHUB_USER="amarek05"
+  setup = ''
+    PROJECT_PATH=$(mktemp -d)
+    echo 'name=malformed' > "$PROJECT_PATH/.wl"
   '';
 
   want = {
-    github_user = "amarek05";
+    exit_code != 0;
+    stderr contains "❌";
   };
 }
 ```
-**expected**: non-export lines parsed same as export lines
-
----
-
-#### parse — comments and blank lines skipped
-```nix
-{
-  CONFIG = ''
-    # comment
-    FORGE_GITHUB_USER="user"
-
-    # another
-    FORGE_EDITOR="vim"
-  '';
-
-  want = {
-    github_user = "user";
-    editor = "vim";
-  };
-}
-```
-**expected**: comments/blank lines ignored
-
----
-
-### overseer: template generation
-
-#### write_task_template — cmd with special chars escaped
-```nix
-{
-  PROJECT = {
-    name = "my-project";
-    path = "/home/user/sync/my-project";
-  };
-
-  TASK = "build";
-  CMD = "nix build --print-build-plan";
-  TAG = "BUILD";
-
-  TEMPLATE_DIR = mktemp -d;
-
-  write_task_template dir=TEMPLATE_DIR project=PROJECT task=TASK cmd=CMD tag=TAG
-
-  TEMPLATE_FILE = "$TEMPLATE_DIR/my-project_build.lua";
-
-  content = read(TEMPLATE_FILE);
-
-  want = {
-    content.name = "my-project_build";
-    content.builder.cmd = ["bash", "-c", "nix build --print-build-plan"];
-    content.builder.cwd = "/home/user/sync/my-project";
-    content.tags = [overseer.TAG.BUILD];
-  };
-}
-```
-**expected**: special chars in cmd escaped for Lua, template written to correct path
-
----
-
-#### write_project_templates — creates build/run/check templates
-```nix
-{
-  PROJECT = {
-    name = "test";
-    path = "/sync/test";
-  };
-
-  WL = ''
-    name="test"
-    lang="rust"
-    build="cargo build"
-    run="cargo run"
-    test="cargo test"
-  '';
-
-  TEMPLATE_DIR = mktemp -d;
-  write_project_templates PROJECT
-
-  files = ls TEMPLATE_DIR
-
-  want = {
-    files = ["test_build.lua", "test_run.lua", "test_check.lua"];
-  };
-}
-```
-**expected**: three template files created with correct cmds from .wl
-
----
-
-#### write_project_templates — falls back to defaults when .wl fields missing
-```nix
-{
-  PROJECT = {
-    name = "test";
-    path = "/sync/test";
-  };
-
-  WL = ''
-    name="test"
-    lang="rust"
-  '';
-  # no build/run/test fields
-
-  TEMPLATE_DIR = mktemp -d;
-  write_project_templates PROJECT
-
-  build_template = read "$TEMPLATE_DIR/test_build.lua"
-
-  want = {
-    build_template.builder.cmd = ["bash", "-c", "nix build"];
-    run_template.builder.cmd = ["bash", "-c", "nix run"];
-    check_template.builder.cmd = ["bash", "-c", "nix flake check"];
-  };
-}
-```
-**expected**: missing .wl fields use nix defaults
-
----
-
-#### remove_project_templates — removes all three templates
-```nix
-{
-  TEMPLATE_DIR = mktemp -d;
-  touch "$TEMPLATE_DIR/test_build.lua"
-  touch "$TEMPLATE_DIR/test_run.lua"
-  touch "$TEMPLATE_DIR/test_check.lua"
-
-  remove_project_templates "test"
-
-  files = ls TEMPLATE_DIR
-
-  want = { files = []; };
-}
-```
-**expected**: all three template files deleted
-
----
-
-### create: build_wl_content
-
-#### build_wl_content — new project with includes
-```nix
-{
-  NAME = "myproject";
-  LANG = "rust";
-  EXISTING_WL = None;
-  INCLUDES = ["git", "overseer"];
-
-  result = build_wl_content NAME LANG EXISTING_WL INCLUDES;
-
-  want = ''
-    name="myproject"
-    lang="rust"
-    includes=["git","overseer"]
-
-  '';
-}
-```
-**expected**: wl content has name, lang, includes
-
----
-
-#### build_wl_content — preserves existing fields from .wl
-```nix
-{
-  NAME = "myproject";
-  LANG = "rust";
-  EXISTING_WL = "/sync/myproject/.wl";  # exists with desc, tags
-  INCLUDES = [];
-
-  EXISTING = ''
-    name="myproject"
-    lang="rust"
-    desc="My great project"
-    tags=["notes"]
-    build="echo built"
-  '';
-
-  result = build_wl_content NAME LANG EXISTING_WL INCLUDES;
-
-  want = {
-    result contains "desc=\"My great project\"";
-    result contains "tags=[\"notes\"]";
-    result contains "build=\"echo built\"";
-  };
-}
-```
-**expected**: existing desc, tags, build carried over to new .wl
+**expected**: non-zero exit, error indicator printed

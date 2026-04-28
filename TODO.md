@@ -187,7 +187,139 @@ Requires Adam's environment to verify.
 - [ ] Test `forge pick` ctrl-o opens nvim with Oil
 - [ ] Test `forge session x --open` opens nvim with Oil
 
----
+### Unit tests for `forge check`
+Add to `tests/unit/queries.md`:
+
+#### `check_wl` — valid .wl returns no errors
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rust"
+    desc="A test project"
+    tags=["cli"]
+    includes=[]
+    build="cargo build"
+  '';
+  want = {
+    errors = [];
+    warnings = [];
+  };
+}
+```
+**expected**: check_wl returns empty errors and warnings
+
+#### `check_wl` — syntax error returns line number
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rust"
+    this line is malformed
+  '';
+  want = {
+    errors.length = 1;
+    errors[0].line = 3;
+    errors[0].msg contains "malformed line";
+  };
+}
+```
+**expected**: error at line 3, messages mention line number
+
+#### `check_wl` — unclosed bracket
+```nix
+{
+  FILE = ''
+    name="test"
+    tags=["cli
+  '';
+  want = {
+    errors.length = 1;
+    errors[0].line = 2;
+    errors[0].msg contains "unclosed";
+  };
+}
+```
+**expected**: error at line 2, mentions unclosed bracket
+
+#### `check_wl` — unknown lang
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rustt"
+  '';
+  want = {
+    errors.length = 1;
+    errors[0].msg contains "no such language";
+  };
+}
+```
+**expected**: error mentions unknown lang `rustt`
+
+#### `check_wl` — unknown include
+```nix
+{
+  FILE = ''
+    name="test"
+    includes=["overseerr"]
+  '';
+  want = {
+    errors.length = 1;
+    errors[0].msg contains "no such include";
+  };
+}
+```
+**expected**: error mentions unknown include
+
+#### `check_wl` — empty build produces warning
+```nix
+{
+  FILE = ''
+    name="test"
+    lang="rust"
+    build=""
+  '';
+  want = {
+    errors = [];
+    warnings.length = 1;
+    warnings[0].msg contains "build";
+    warnings[0].msg contains "empty";
+  };
+}
+```
+**expected**: warning that build is empty, overseer will fall back
+
+#### `check_wl` — duplicate key
+```nix
+{
+  FILE = ''
+    name="test"
+    name="test2"
+  '';
+  want = {
+    errors.length = 1;
+    errors[0].msg contains "duplicate";
+  };
+}
+```
+**expected**: error mentions duplicate key `name`
+
+### Integration tests for `forge check`
+Add to `tests/integration/suite.sh`:
+```sh
+# forge check — all projects pass
+forge check && echo "check all: PASS"
+
+# forge check — single project
+forge check some-project && echo "check one: PASS"
+
+# forge check — invalid .wl exits non-zero
+cd "$FORGE_SYNC_BASE/test-bad"
+echo 'name="bad"
+  tags=[' > .wl
+forge check test-bad && echo "FAIL: should have errored" || echo "check bad: PASS"
+```
 
 ## Test suite
 
