@@ -56,7 +56,10 @@ pub fn check_wl(path: &Path, lang_dir: Option<&Path>, include_dir: Option<&Path>
     let fields = match parse_fields_only(&content) {
         Ok(f) => f,
         Err(e) => {
-            errors.push(e);
+            errors.push(CheckError {
+                line: None,
+                msg: format!("parse error: {}", e),
+            });
             return Ok(CheckResult {
                 path: path.to_string_lossy().to_string(),
                 errors,
