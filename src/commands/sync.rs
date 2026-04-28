@@ -20,6 +20,15 @@ pub fn run() -> Result<()> {
     let mut index = index_mod::load_index()
         .unwrap_or_else(|_| ProjectIndex::new(sync_base.clone()));
 
+    // Detect stale entries (indexed but .wl no longer exists)
+    let mut stale_count = 0;
+    for entry in &index.projects {
+        if !entry.path.join(".wl").exists() {
+            println!("removed: {} (directory gone)", entry.name);
+            stale_count += 1;
+        }
+    }
+
     // Build map of existing entries by name (preserve last_opened, open_count)
     let existing: std::collections::HashMap<String, (Option<String>, u32)> = index.projects.iter()
         .map(|p| (p.name.clone(), (p.last_opened.clone(), p.open_count)))
@@ -56,7 +65,7 @@ pub fn run() -> Result<()> {
     index.projects = updated;
     index_mod::save_index(&index)?;
 
-    println!("synced {} projects", index.projects.len());
+    println!("synced {} projects (removed {})", index.projects.len(), stale_count);
 
     Ok(())
 }
