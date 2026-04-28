@@ -51,7 +51,7 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
         vec![]
     };
 
-    let wl_content = build_wl_content(&name, &lang.name, wl_exists.then_some(&wl_path), &includes)?;
+    let wl_content = build_wl_content(&name, &lang.name, &lang, wl_exists.then_some(&wl_path), &includes)?;
 
     fs::write(&wl_path, &wl_content)
         .with_context(|| format!("failed to write {}", wl_path.display()))?;
@@ -73,33 +73,14 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
     // Run include setups
     run_include_setups(&includes, &project_path, &config)?;
 
-    // Record applied includes so later syncs don't re-run them
-    save_applied(&project_path, &includes)?;
-
-    // Run arbitrary command
-    if let Some(ref cmd) = run {
-        std::process::Command::new("sh")
-            .args(["-c", cmd])
-            .current_dir(&project_path)
-            .status()?;
-    }
-
-    // Open editor again if --editor
-    if editor {
-        let editor = &config.editor;
-        std::process::Command::new("sh")
-            .args(["-c", &format!("{} {}", editor, wl_path.display())])
-            .status()?;
-    }
-
-    // After editor closes, verify .wl syntax and diff includes
-    // (only runs if editor was opened — no_open=true skips)
+    // When editor runs: verify_and_diff handles index (adds if new)
+    // When no editor: add_to_index adds the new project to index
     if !no_open || editor {
         verify_and_diff(&project_path, &config)?;
+    } else {
+        add_to_index(&name, &lang.name, &project_path)?;
+        save_applied(&project_path, &includes)?;
     }
-
-    // Add to index
-    add_to_index(&name, &lang.name, &project_path)?;
 
     Ok(())
 }
@@ -111,40 +92,91 @@ fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
         .with_context(|| format!("language '{}' not found in registry", lang_name))
 }
 
-fn build_wl_content(name: &str, lang: &str, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {
+fn build_wl_content(name: &str, lang_name: &str, lang: &Language, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {
+    // Pre-declare all fields when creating a new project.
+    // When re-editing an existing .wl, carry over user-modified values.
     let mut lines = vec![
         format!("name=\"{}\"", name),
         format!("lang=\"{}\"", lang),
+        format!("desc=\"\""),
+        String::from("tags=[]"),
     ];
 
+    // includes
     if !includes.is_empty() {
         let inc_str = includes.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(",");
         lines.push(format!("includes=[{}]", inc_str));
+    } else {
+        lines.push(String::from("includes=[]"));
     }
 
-    // Carry over existing fields if .wl exists
+    // build/run/test/check from lang defaults
+    if let Some(ref b) = lang.build {
+        if !b.is_empty() {
+            lines.push(format!("build=\"{}\"", b));
+        }
+    }
+    if let Some(ref r) = lang.run {
+        if !r.is_empty() {
+            lines.push(format!("run=\"{}\"", r));
+        }
+    }
+    if let Some(ref t) = lang.test {
+        if !t.is_empty() {
+            lines.push(format!("test=\"{}\"", t));
+        }
+    }
+    if let Some(ref c) = lang.check {
+        if !c.is_empty() {
+            lines.push(format!("check=\"{}\"", c));
+        }
+    }
+
+    // overseer_template if lang has one
+    if let Some(ref ot) = lang.overseer_template {
+        if !ot.is_empty() {
+            lines.push(format!("overseer_template=\"{}\"", ot));
+        }
+    }
+
+    // Carry over existing user-modified fields if .wl already exists
     if let Some(ref path) = existing_wl {
         if let Ok(existing) = parse_wl(path) {
             if let Some(ref desc) = existing.desc {
                 if !desc.is_empty() {
-                    lines.insert(2, format!("desc=\"{}\"", desc));
+                    // Replace the empty desc we added
+                    if let Some(idx) = lines.iter().position(|l| l == "desc=\"\"") {
+                        lines[idx] = format!("desc=\"{}\"", desc);
+                    }
                 }
             }
             if !existing.tags.is_empty() {
-                let tags_str = existing.tags.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(",");
-                lines.push(format!("tags=[{}]", tags_str));
+                // Replace empty tags
+                if let Some(idx) = lines.iter().position(|l| l == "tags=[]") {
+                    let tags_str = existing.tags.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(",");
+                    lines[idx] = format!("tags=[{}]", tags_str);
+                }
             }
             if let Some(ref build) = existing.build {
-                lines.push(format!("build=\"{}\"", build));
+                // Replace if not default
+                if let Some(idx) = lines.iter().position(|l| l.starts_with("build=\"")) {
+                    lines[idx] = format!("build=\"{}\"", build);
+                }
             }
             if let Some(ref run) = existing.run {
-                lines.push(format!("run=\"{}\"", run));
+                if let Some(idx) = lines.iter().position(|l| l.starts_with("run=\"")) {
+                    lines[idx] = format!("run=\"{}\"", run);
+                }
             }
             if let Some(ref test) = existing.test {
-                lines.push(format!("test=\"{}\"", test));
+                if let Some(idx) = lines.iter().position(|l| l.starts_with("test=\"")) {
+                    lines[idx] = format!("test=\"{}\"", test);
+                }
             }
             if let Some(ref check) = existing.check {
-                lines.push(format!("check=\"{}\"", check));
+                if let Some(idx) = lines.iter().position(|l| l.starts_with("check=\"")) {
+                    lines[idx] = format!("check=\"{}\"", check);
+                }
             }
         }
     }

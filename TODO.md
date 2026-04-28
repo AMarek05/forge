@@ -39,14 +39,18 @@ store: /nix/store/<hash>-forge-0.1.0/
           ├── git/setup.sh
           └── overseer/setup.sh
 
-~/.local/state/forge/         # writable runtime state only
-  ├── index.json              # project index
-  └── config                  # runtime config
+~/.forge/                      # writable runtime state
+  ├── index.json               # project index (v3, structural fields only)
+  └── config                   # runtime config
 
 ~/.local/share/zsh/site-functions/_forge  # zsh completion (installed by HM)
 ~/.local/share/nvim/site/lua/overseer/template/forge/  # overseer templates (per project)
   ├── myproject.lua
   └── ...
+
+<project>/.forge/              # per-project state (moves with project dir)
+  ├── state                    # all .wl field values (name/lang/desc/tags/includes/build/run/test/check/last_wl_mtime)
+  └── applied-includes         # includes whose setup.sh has already run
 ```
 
 ### Home-manager module
@@ -133,13 +137,6 @@ return {
 - [x] `programs.zsh.initContent` with `lib.mkOrder 550` for fpath setup
 
 ### Field prefill & validation
-- [ ] `forge create <name> --lang rust --include git` — generates `.wl` with all fields pre-declared:
-    - `name=<name>` from arg; `lang=rust`, `includes=[git]` from flags — these fill their own fields from lang.wl/include metadata
-    - `desc=""`, `tags=[]` — empty, user fills
-    - `build`, `run`, `test`, `check` — populated from `lang.wl` defaults
-  - All fields present, none missing
-  - Opens editor on the `.wl` (unless `--no-open`), auto-syncs on close
-- [ ] `forge edit <project>` — opens `.wl` in `$EDITOR`, auto-syncs on close
 - [x] `forge check [<project>]` — validate `.wl` syntax and field integrity
   - Syntax: malformed lines, unclosed brackets, bad array/json structure
   - `lang` field: resolves against known languages (from HM config)
@@ -150,25 +147,37 @@ return {
   - `forge check` (no arg) runs on index state file and all known projects
   - `forge check <name>` runs on single project
 
-### Index simplification (source-of-truth model)
-- [ ] Index stores only structural/runtime fields: `name`, `path`, `lang`, `last_opened`, `open_count`
-- [ ] `.wl` is sole source of truth for: `desc`, `tags`, `includes`, `build`/`run`/`test`/`check`
-- [ ] `forge list` reads `.wl` directly (no stale cache)
-- [ ] `forge sync` re-scans sync_base, updates structural index fields only
-- [ ] After editor closes on create or edit: auto-run `forge sync` before returning
+### Field prefill
+- [ ] `forge create <name> --lang rust --include git` — generates `.wl` with all fields pre-declared:
+    - `name=<name>` from arg; `lang=rust`, `includes=[git]` from flags
+    - `desc=""`, `tags=[]` — empty, user fills
+    - `build`, `run`, `test`, `check` — populated from `lang.wl` defaults
+    - `overseer_template` if applicable
+    - All fields present, none missing
+  - Opens editor on the `.wl` (unless `--no-open`), auto-syncs on close
+
+### Applied-includes tracking (done ✅)
+- [x] Per-project `.forge/applied-includes` tracks which includes have had their setup.sh run
+- [x] `forge sync`: diffs includes vs applied-includes, runs missing setups, updates applied-includes
+- [x] `forge edit <project>`: opens `.wl`, verify_and_diff on close (syntax check + include diff + field diff + index update)
+- [x] `forge create`: saves applied-includes after setup, re-diffs after editor close
+- [x] `forge pick` ctrl-e: same verify_and_diff flow
+- [x] `forge sync`: warns when removing stale entries (`.wl` gone), warns on parse failure
+- [x] Index: `~/.forge-index.json` → `~/.forge/index.json` with auto-migration from old location
+- [x] Per-project `.forge/state`: tracks all .wl fields, written after every verified edit
 
 ### Healthcheck
 - [ ] `forge health` — general system state validator
-  - Index file (`~/.local/state/forge/index.json`): valid JSON, non-empty projects array
+  - Index file (`~/.forge/index.json`): valid JSON, non-empty projects array
   - Each project `.wl`: parseable, no missing required fields
+  - Each project `.forge/state`: present and readable
   - Detects and flags: projects with no `name`, duplicate `name` entries, stale `path` pointing to missing directory
-  - `--fix` flag to auto-correct: regenerate missing fields from lang defaults, remove duplicates
+  - `--fix` flag to auto-correct: regenerate missing fields from lang defaults, remove duplicates, restore state from .wl
   - Exit code: 0 if healthy, non-zero if issues found
-  - `forge sync` runs `health` pass before writing index (skip on failure)
   - Output format:
     ```
     ✅ index.json: valid
-    ⚠️  project "old-project": path ~/.local/state/forge/sync/Rust/old does not exist
+    ⚠️  project "old-project": path ~/sync/Rust/old does not exist
     ⚠️  project "dup-name": duplicate name (appears in both Rust/dup and Rust/dup-copy)
     ❌ project "broken": .wl syntax error at line 7 — unclosed bracket
     ```
