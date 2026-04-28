@@ -33,7 +33,7 @@ pub fn run() -> Result<()> {
 
     // Preserve last_opened and open_count for known projects
     let mut updated = vec![];
-    for (name, lang, path, includes) in new_projects {
+    for (name, lang, path, _includes) in new_projects {
         let (last_opened, open_count) = existing.get(&name)
             .cloned()
             .unwrap_or((None, 0));

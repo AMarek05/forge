@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 
-use crate::applied_includes::{load as load_applied, save as save_applied};
+use crate::applied_includes::save as save_applied;
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
 use crate::paths::resolve_project_path;

@@ -21,7 +21,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::wl_parser::{parse_wl, WlFile};
+use crate::wl_parser::WlFile;
 
 /// Fields we track per project (mirrors .wl surface fields).
 #[derive(Debug, Clone, Default)]

@@ -10,6 +10,7 @@ use anyhow::{Context, Result};
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod};
 use crate::verify_and_diff::verify_and_diff;
+use crate::wl_parser::parse_wl;
 
 pub fn run(tags: Option<String>) -> Result<()> {
     let config = ForgeConfig::load()?;
