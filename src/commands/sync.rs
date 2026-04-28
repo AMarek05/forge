@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result};
 
 use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
+use crate::verify_and_diff::verify_and_diff;
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
 use crate::wl_parser::parse_wl;
@@ -39,7 +40,9 @@ pub fn run() -> Result<()> {
 
         // Diff includes against applied-includes and run missing setups
         let project_path = PathBuf::from(&path);
-        diff_and_run_includes(&project_path, &includes, &config)?;
+        if let Err(e) = verify_and_diff(&project_path, &config) {
+            eprintln!("warning: {}: {} — skipping include sync", project_path.display(), e);
+        }
 
         updated.push(ProjectEntry {
             name,

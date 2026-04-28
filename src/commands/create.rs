@@ -6,36 +6,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 
-use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
+use crate::applied_includes::{load as load_applied, save as save_applied};
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
 use crate::paths::resolve_project_path;
+use crate::verify_and_diff::verify_and_diff;
 use crate::wl_parser::{parse_lang_wl, parse_wl, Language};
-
-fn strip_quotes(s: &str) -> String {
-    let s = s.trim();
-    if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
-        s[1..s.len() - 1].to_string()
-    } else {
-        s.to_string()
-    }
-}
-
-fn parse_json_array(s: &str) -> Vec<String> {
-    let s = s.trim();
-    if !s.starts_with('[') || !s.ends_with(']') {
-        return vec![];
-    }
-    let inner = &s[1..s.len() - 1].trim();
-    if inner.is_empty() {
-        return vec![];
-    }
-    let mut result = vec![];
-    for part in inner.split(',') {
-        result.push(strip_quotes(part.trim()));
-    }
-    result
-}
 
 fn now_iso() -> String {
     let now = SystemTime::now()
@@ -116,27 +92,14 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
             .status()?;
     }
 
-    // After editor closes (if it ran), re-read .wl and diff includes again
-    // in case user added new includes during the edit session
+    // After editor closes, verify .wl syntax and diff includes
+    // (only runs if editor was opened — no_open=true skips)
     if !no_open || editor {
-        let wl = parse_wl(&wl_path).ok();
-        if let Some(ref w) = wl {
-            let current = w.includes.clone();
-            let applied = load_applied(&project_path)?;
-            let new_includes = diff_applied(&current, &applied);
-            for inc_name in &new_includes {
-                run_include_setup(inc_name, &project_path, &config)?;
-            }
-            if !new_includes.is_empty() {
-                let mut all_applied = applied;
-                all_applied.extend(new_includes);
-                save_applied(&project_path, &all_applied)?;
-            }
-        }
+        verify_and_diff(&project_path, &config)?;
     }
 
     // Add to index
-    add_to_index(&name, &lang.name, &project_path, wl_exists.then_some(&wl_path))?;
+    add_to_index(&name, &lang.name, &project_path)?;
 
     Ok(())
 }
@@ -239,50 +202,45 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
 
 fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
     for inc_name in includes {
-        run_include_setup(inc_name, project_path, config)?;
-    }
-    Ok(())
-}
+        let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
+        if !setup_sh.exists() {
+            eprintln!("warning: include '{}' not found, skipping", inc_name);
+            continue;
+        }
 
-fn run_include_setup(inc_name: &str, project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
-    let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
-    if !setup_sh.exists() {
-        eprintln!("warning: include '{}' not found, skipping", inc_name);
-        return Ok(());
-    }
+        let project_name = project_path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("");
 
-    let project_name = project_path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
+        let env_vars = [
+            ("FORGE_PROJECT_NAME", project_name),
+            ("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or("")),
+            ("FORGE_BASE", config.base.to_str().unwrap_or("")),
+            ("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or("")),
+            ("FORGE_GITHUB_USER", &config.github_user),
+            ("FORGE_EDITOR", &config.editor),
+            ("FORGE_DRY_RUN", "0"),
+        ];
 
-    let env_vars = [
-        ("FORGE_PROJECT_NAME", project_name),
-        ("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or("")),
-        ("FORGE_BASE", config.base.to_str().unwrap_or("")),
-        ("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or("")),
-        ("FORGE_GITHUB_USER", &config.github_user),
-        ("FORGE_EDITOR", &config.editor),
-        ("FORGE_DRY_RUN", "0"),
-    ];
+        let mut cmd = std::process::Command::new("bash");
+        cmd.arg(&setup_sh);
+        for (k, v) in &env_vars {
+            cmd.env(k, v);
+        }
+        cmd.current_dir(project_path);
 
-    let mut cmd = std::process::Command::new("bash");
-    cmd.arg(&setup_sh);
-    for (k, v) in &env_vars {
-        cmd.env(k, v);
-    }
-    cmd.current_dir(project_path);
+        let status = cmd.status()
+            .with_context(|| format!("include setup '{}' failed", inc_name))?;
 
-    let status = cmd.status()
-        .with_context(|| format!("include setup '{}' failed", inc_name))?;
-
-    if !status.success() {
-        anyhow::bail!("include '{}' setup.sh exited with non-zero status", inc_name);
+        if !status.success() {
+            anyhow::bail!("include '{}' setup.sh exited with non-zero status", inc_name);
+        }
     }
 
     Ok(())
 }
 
-fn add_to_index(name: &str, lang: &str, path: &PathBuf, _wl_path: Option<&PathBuf>) -> Result<()> {
+fn add_to_index(name: &str, lang: &str, path: &PathBuf) -> Result<()> {
     let mut index = index_mod::load_index()
         .unwrap_or_else(|_| ProjectIndex::new(path.parent().map(|p| p.to_path_buf()).unwrap_or_default()));
 
@@ -292,13 +250,11 @@ fn add_to_index(name: &str, lang: &str, path: &PathBuf, _wl_path: Option<&PathBu
         return Ok(());
     }
 
-    let added_at = now_iso();
-
     let entry = ProjectEntry {
         name: name.to_string(),
         lang: lang.to_string(),
         path: path.clone(),
-        added_at,
+        added_at: now_iso(),
         last_opened: None,
         open_count: 0,
     };

@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod};
-use crate::wl_parser::parse_wl;
+use crate::verify_and_diff::verify_and_diff;
 
 pub fn run(tags: Option<String>) -> Result<()> {
     let config = ForgeConfig::load()?;
@@ -149,11 +149,8 @@ pub fn run(tags: Option<String>) -> Result<()> {
                 .args(["-c", &cmd])
                 .status()?;
 
-            // Diff includes after edit
-            let wl = parse_wl(&wl_path).ok();
-            if let Some(ref w) = wl {
-                diff_and_sync_includes(&project_path, &w.includes, &config)?;
-            }
+            // Verify .wl syntax and diff includes after editor closes
+            verify_and_diff(&std::path::PathBuf::from(&project_path), &config)?;
         }
         "ctrl-o" => {
             // Open project directory in $EDITOR
