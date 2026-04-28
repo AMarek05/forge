@@ -11,17 +11,13 @@
 //! removes duplicates (keeps first seen, removes rest).
 
 use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::config::ForgeConfig;
-use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
+use crate::index::{self as index_mod};
 use crate::wl_parser::parse_wl;
 
 pub fn run(fix: bool) -> Result<()> {
-    let config = ForgeConfig::load()?;
     let mut index = index_mod::load_index()?;
 
     let mut errors = vec![];

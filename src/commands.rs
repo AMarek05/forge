@@ -18,7 +18,9 @@ pub mod session;
 pub mod setup;
 pub mod sync;
 
+pub use cd::run as cd;
 pub use health::run as health;
+pub use cd::run as cd;
 pub use check::run as check;
 pub use create::run as create;
 pub use edit::run as edit;
