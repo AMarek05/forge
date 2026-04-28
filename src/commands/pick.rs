@@ -1,4 +1,6 @@
 //! `forge pick` — interactive fzf session picker.
+//!
+//! Reads .wl directly for desc/tags/includes (index holds only structural fields).
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -7,6 +9,7 @@ use anyhow::Result;
 
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod};
+use crate::wl_parser::parse_wl;
 
 pub fn run(tags: Option<String>) -> Result<()> {
     let config = ForgeConfig::load()?;
@@ -18,26 +21,31 @@ pub fn run(tags: Option<String>) -> Result<()> {
         vec![]
     };
 
-    let projects: Vec<_> = index.projects.iter()
-        .filter(|p| {
-            if filter_tags.is_empty() {
-                true
-            } else {
-                filter_tags.iter().all(|t| p.tags.contains(t))
-            }
-        })
-        .collect();
+    let mut projects: Vec<(String, String, String, Vec<String>)> = vec![];
+
+    for p in &index.projects {
+        let wl_path = p.path.join(".wl");
+        let wl = parse_wl(&wl_path).ok();
+        let desc = wl.as_ref().and_then(|w| w.desc.clone()).unwrap_or_default();
+        let project_tags = wl.as_ref().map(|w| w.tags.clone()).unwrap_or_default();
+
+        // Tag filtering — uses .wl tags directly
+        if !filter_tags.is_empty() && !filter_tags.iter().all(|t| project_tags.contains(t)) {
+            continue;
+        }
+
+        projects.push((p.name.clone(), p.path.to_string_lossy().to_string(), desc, project_tags));
+    }
 
     if projects.is_empty() {
         anyhow::bail!("no projects found");
     }
 
-    // Build input for fzf: "name\tpath\tdesc"
+    // Build input for fzf: "name\tpath\tdesc\ttags"
     let input: String = projects.iter()
-        .map(|p| {
-            let desc = p.desc.as_deref().unwrap_or("");
-            let tags = p.tags.join(",");
-            format!("{}\t{}\t{} {}", p.name, p.path.to_string_lossy(), desc, tags)
+        .map(|(name, path, desc, tags)| {
+            let tags_str = tags.join(",");
+            format!("{}\t{}\t{}\t{}", name, path, desc, tags_str)
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -128,22 +136,28 @@ pub fn run(tags: Option<String>) -> Result<()> {
             println!("removed: {}", project_name);
         }
         "ctrl-e" => {
-            // Edit .wl in $EDITOR
-            let wl_path = std::path::PathBuf::from(project_path).join(".wl");
-            std::env::set_current_dir(project_path)?;
+            // Edit .wl in $EDITOR — re-read .wl for new includes after editor close
+            let wl_path = std::path::PathBuf::from(&project_path).join(".wl");
+            std::env::set_current_dir(&project_path)?;
             let editor = &config.editor;
             let cmd = if editor.contains("nvim") {
-                format!("{} -c Oil", editor)
+                format!("{} -c Oil {}", editor, wl_path.to_string_lossy())
             } else {
                 format!("{} {}", editor, wl_path.to_string_lossy())
             };
             Command::new("sh")
                 .args(["-c", &cmd])
                 .status()?;
+
+            // Diff includes after edit
+            let wl = parse_wl(&wl_path).ok();
+            if let Some(ref w) = wl {
+                diff_and_sync_includes(&project_path, &w.includes, &config)?;
+            }
         }
         "ctrl-o" => {
             // Open project directory in $EDITOR
-            std::env::set_current_dir(project_path)?;
+            std::env::set_current_dir(&project_path)?;
             let editor = &config.editor;
             let cmd = if editor.contains("nvim") {
                 format!("{} -c Oil", editor)
@@ -161,22 +175,76 @@ pub fn run(tags: Option<String>) -> Result<()> {
         }
         "ctrl-s" => {
             // Toggle setup flag and run setup
-            let setup_sh = std::path::PathBuf::from(project_path).join("setup.sh");
+            let setup_sh = std::path::PathBuf::from(&project_path).join("setup.sh");
             if setup_sh.exists() {
                 Command::new("bash")
                     .arg(&setup_sh)
-                    .current_dir(project_path)
+                    .current_dir(&project_path)
                     .status()?;
             }
             // Run direnv allow
             Command::new("direnv")
                 .arg("allow")
-                .current_dir(project_path)
+                .current_dir(&project_path)
                 .status()
                 .ok();
         }
         _ => {}
     }
+
+    Ok(())
+}
+
+/// Diff project includes against .forge/applied-includes and run any new setups.
+fn diff_and_sync_includes(project_path: &str, current_includes: &[String], config: &ForgeConfig) -> Result<()> {
+    use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
+
+    let path = std::path::PathBuf::from(project_path);
+    let applied = load_applied(&path)?;
+    let new_includes = diff_applied(current_includes, &applied);
+
+    for inc_name in &new_includes {
+        run_include_setup(inc_name, &path, config)?;
+    }
+
+    if !new_includes.is_empty() {
+        let mut all_applied = applied;
+        all_applied.extend(new_includes);
+        save_applied(&path, &all_applied)?;
+    }
+
+    Ok(())
+}
+
+fn run_include_setup(inc_name: &str, project_path: &std::path::PathBuf, config: &ForgeConfig) -> Result<()> {
+    let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
+    if !setup_sh.exists() {
+        eprintln!("warning: include '{}' not found, skipping", inc_name);
+        return Ok(());
+    }
+
+    let project_name = project_path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
+
+    let status = Command::new("bash")
+        .arg(&setup_sh)
+        .env("FORGE_PROJECT_NAME", project_name)
+        .env("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or(""))
+        .env("FORGE_BASE", config.base.to_str().unwrap_or(""))
+        .env("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or(""))
+        .env("FORGE_GITHUB_USER", &config.github_user)
+        .env("FORGE_EDITOR", &config.editor)
+        .env("FORGE_DRY_RUN", "0")
+        .current_dir(project_path)
+        .status()
+        .with_context(|| format!("include setup '{}' failed", inc_name))?;
+
+    if !status.success() {
+        anyhow::bail!("include '{}' setup.sh exited with non-zero status", inc_name);
+    }
+
+    println!("applied include: {} for {}", inc_name, project_name);
 
     Ok(())
 }

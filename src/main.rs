@@ -1,3 +1,4 @@
+mod applied_includes;
 mod cli;
 mod commands;
 mod config;

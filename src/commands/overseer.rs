@@ -55,12 +55,9 @@ fn write_task_template(
 
 fn write_project_templates(project: &index_mod::ProjectEntry) -> Result<()> {
     // Read build from index (set at project creation time), fall back to .wl parsing
-    let build_cmd = project.build.clone()
-        .or_else(|| {
-            parse_wl(&project.path.join(".wl"))
-                .ok()
-                .and_then(|w| w.build)
-        })
+    let build_cmd = parse_wl(&project.path.join(".wl"))
+        .ok()
+        .and_then(|w| w.build)
         .unwrap_or_else(|| "nix build".to_string());
 
     let run_cmd = parse_wl(&project.path.join(".wl"))

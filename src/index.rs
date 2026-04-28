@@ -1,4 +1,8 @@
 //! Read/write `~/.forge-index.json` — the cached project index.
+//!
+//! Schema (v2 — .wl is source of truth for project metadata):
+//!   name, lang, path  → structural, stored in index
+//!   desc, tags, includes, build/run/test/check → read from .wl at display time
 
 use std::fs;
 use std::path::PathBuf;
@@ -11,10 +15,6 @@ pub struct ProjectEntry {
     pub name: String,
     pub lang: String,
     pub path: PathBuf,
-    pub desc: Option<String>,
-    pub tags: Vec<String>,
-    pub includes: Vec<String>,
-    pub build: Option<String>,
     pub added_at: String,
     pub last_opened: Option<String>,
     pub open_count: u32,
@@ -30,7 +30,7 @@ pub struct ProjectIndex {
 impl ProjectIndex {
     pub fn new(sync_base: PathBuf) -> Self {
         ProjectIndex {
-            version: 1,
+            version: 2,
             sync_base,
             projects: vec![],
         }
