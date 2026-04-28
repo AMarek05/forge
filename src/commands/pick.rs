@@ -193,60 +193,6 @@ pub fn run(tags: Option<String>) -> Result<()> {
     Ok(())
 }
 
-/// Diff project includes against .forge/applied-includes and run any new setups.
-fn diff_and_sync_includes(project_path: &str, current_includes: &[String], config: &ForgeConfig) -> Result<()> {
-    use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
-
-    let path = std::path::PathBuf::from(project_path);
-    let applied = load_applied(&path)?;
-    let new_includes = diff_applied(current_includes, &applied);
-
-    for inc_name in &new_includes {
-        run_include_setup(inc_name, &path, config)?;
-    }
-
-    if !new_includes.is_empty() {
-        let mut all_applied = applied;
-        all_applied.extend(new_includes);
-        save_applied(&path, &all_applied)?;
-    }
-
-    Ok(())
-}
-
-fn run_include_setup(inc_name: &str, project_path: &std::path::PathBuf, config: &ForgeConfig) -> Result<()> {
-    let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
-    if !setup_sh.exists() {
-        eprintln!("warning: include '{}' not found, skipping", inc_name);
-        return Ok(());
-    }
-
-    let project_name = project_path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
-
-    let status = Command::new("bash")
-        .arg(&setup_sh)
-        .env("FORGE_PROJECT_NAME", project_name)
-        .env("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or(""))
-        .env("FORGE_BASE", config.base.to_str().unwrap_or(""))
-        .env("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or(""))
-        .env("FORGE_GITHUB_USER", &config.github_user)
-        .env("FORGE_EDITOR", &config.editor)
-        .env("FORGE_DRY_RUN", "0")
-        .current_dir(project_path)
-        .status()
-        .with_context(|| format!("include setup '{}' failed", inc_name))?;
-
-    if !status.success() {
-        anyhow::bail!("include '{}' setup.sh exited with non-zero status", inc_name);
-    }
-
-    println!("applied include: {} for {}", inc_name, project_name);
-
-    Ok(())
-}
-
 fn session_name_for(name: &str) -> String {
     format!("forge-{}", name)
 }

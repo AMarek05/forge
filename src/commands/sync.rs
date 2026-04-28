@@ -8,7 +8,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 
-use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
 use crate::verify_and_diff::verify_and_diff;
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
@@ -62,26 +61,6 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-/// Compare the project's current includes against .forge/applied-includes,
-/// run setup.sh for any newly added ones, then update applied-includes.
-fn diff_and_run_includes(project_path: &PathBuf, current_includes: &[String], config: &ForgeConfig) -> Result<()> {
-    let applied = load_applied(project_path)?;
-    let new_includes = diff_applied(current_includes, &applied);
-
-    for inc_name in &new_includes {
-        run_include_setup(inc_name, project_path, config)?;
-    }
-
-    if !new_includes.is_empty() {
-        // Merge applied + new and save
-        let mut all_applied = applied;
-        all_applied.extend(new_includes.clone());
-        save_applied(project_path, &all_applied)?;
-    }
-
-    Ok(())
-}
-
 fn walk_dir(dir: &std::path::Path, results: &mut Vec<(String, String, String, Vec<String>)>) -> Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -111,39 +90,6 @@ fn walk_dir(dir: &std::path::Path, results: &mut Vec<(String, String, String, Ve
             }
         }
     }
-    Ok(())
-}
-
-fn run_include_setup(inc_name: &str, project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
-    let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
-    if !setup_sh.exists() {
-        eprintln!("warning: include '{}' not found, skipping", inc_name);
-        return Ok(());
-    }
-
-    let project_name = project_path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
-
-    let status = std::process::Command::new("bash")
-        .arg(&setup_sh)
-        .env("FORGE_PROJECT_NAME", project_name)
-        .env("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or(""))
-        .env("FORGE_BASE", config.base.to_str().unwrap_or(""))
-        .env("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or(""))
-        .env("FORGE_GITHUB_USER", &config.github_user)
-        .env("FORGE_EDITOR", &config.editor)
-        .env("FORGE_DRY_RUN", "0")
-        .current_dir(project_path)
-        .status()
-        .with_context(|| format!("include setup '{}' failed", inc_name))?;
-
-    if !status.success() {
-        anyhow::bail!("include '{}' setup.sh exited with non-zero status", inc_name);
-    }
-
-    println!("applied include: {} for {}", inc_name, project_name);
-
     Ok(())
 }
 
