@@ -2,7 +2,7 @@
 
 use std::process::Command;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
 use crate::config::ForgeConfig;

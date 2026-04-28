@@ -42,7 +42,7 @@ pub fn run(tags: Option<String>) -> Result<()> {
     println!("{:25} {:10} {:35} {:30}", "NAME", "LANG", "DESC", "TAGS");
     println!("{}", "-".repeat(100));
 
-    for (name, lang, desc, tags_str, includes) in rows {
+    for (name, lang, desc, tags_str, _includes) in rows {
         let desc_trunc = desc.chars().take(33).collect::<String>();
         println!("{:25} {:10} {:35} {:30}", name, lang, desc_trunc, tags_str);
     }

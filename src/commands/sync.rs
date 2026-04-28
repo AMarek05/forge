@@ -6,9 +6,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
-use crate::applied_includes::{self, diff_applied, load as load_applied, save as save_applied};
+use crate::applied_includes::{diff_applied, load as load_applied, save as save_applied};
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
 use crate::wl_parser::parse_wl;

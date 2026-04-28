@@ -5,7 +5,7 @@
 //! current `includes` field against this list and run any missing setups.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::Result;
 

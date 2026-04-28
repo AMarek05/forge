@@ -16,10 +16,7 @@ pub fn run(name: String) -> Result<()> {
     let wl = parse_wl(&wl_path)
         .with_context(|| format!("failed to read {}", wl_path.display()))?;
 
-    let build_cmd = wl.build.as_ref()
-        .or_else(|| Some(&project.build).and_then(|b: &Option<String>| b.as_ref()))
-        .map(|s: &String| s.as_str())
-        .unwrap_or("nix build");
+    let build_cmd = wl.build.as_deref().unwrap_or("nix build");
 
     let json = serde_json::json!({
         "name": format!("{}:build", name),
