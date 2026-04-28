@@ -75,5 +75,7 @@ fn main() -> Result<()> {
             commands::open(name),
         cli::Command::Check { name } =>
             commands::check(name),
+        cli::Command::Health { fix } =>
+            commands::health(fix),
     }
 }

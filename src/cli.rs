@@ -192,4 +192,11 @@ pub enum Command {
         /// Project name to check (checks all projects if omitted)
         name: Option<String>,
     },
+
+    /// Validate system state and report issues
+    Health {
+        /// Auto-fix detected issues
+        #[arg(long)]
+        fix: bool,
+    },
 }

@@ -1,5 +1,6 @@
 //! Commands module — stubs for all forge subcommands.
 
+pub mod health;
 pub mod cd;
 pub mod check;
 pub mod create;
@@ -17,7 +18,7 @@ pub mod session;
 pub mod setup;
 pub mod sync;
 
-pub use cd::run as cd;
+pub use health::run as health;
 pub use check::run as check;
 pub use create::run as create;
 pub use edit::run as edit;

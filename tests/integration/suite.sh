@@ -214,8 +214,27 @@ if echo "$HEALTH_OUTPUT" | grep -qi "not found\|unrecognized\|unknown command"; 
   info "health command not yet implemented — skipping test"
 elif echo "$HEALTH_OUTPUT" | grep -q "✅\|⚠️\|❌"; then
   pass "health command implemented and returns structured output"
+fi
+
+# Test: health --fix removes stale entry
+info "forge health --fix removes stale entry"
+STALE_DIR="$SYNC_BASE/Code/Rust/health-stale"
+mkdir -p "$STALE_DIR"
+echo 'name="health-stale"' > "$STALE_DIR/.wl"
+$FORGE sync >/dev/null 2>&1 || true
+rm -rf "$STALE_DIR"
+HEALTH_FIX_OUTPUT=$($FORGE health --fix 2>&1)
+info "health --fix output: $HEALTH_FIX_OUTPUT"
+if echo "$HEALTH_FIX_OUTPUT" | grep -q "removed stale entry"; then
+  pass "health --fix removes stale entry"
 else
-  info "health command returned: $HEALTH_OUTPUT"
+  fail "expected 'removed stale entry' in health --fix output"
+fi
+INDEX_CONTENT=$(cat "$HOME/.forge/index.json")
+if echo "$INDEX_CONTENT" | grep -q "health-stale"; then
+  fail "health-stale still in index after --fix"
+else
+  pass "health-stale removed from index after --fix"
 fi
 
 echo ""
