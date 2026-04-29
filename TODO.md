@@ -103,6 +103,24 @@ return {
 
 ## TODOs
 
+### Comprehensive test suite — IN PROGRESS
+
+Added `src/lib.rs` (forge library crate exposing all modules for testing).
+Added `src/wl_parser.rs` — `#[cfg(test)] mod tests` with full unit coverage for:
+  - `strip_quotes`: double/single quotes, no quotes, whitespace
+  - `parse_json_array`: empty, single, multi, whitespace, not-array, single-quotes
+  - `parse_wl`: minimal, all-fields, empty-arrays, comments, malformed-line errors, unclosed-bracket, unquoted-string, duplicate-key-last-wins
+  - `parse_lang_wl`: basic, optional-fields-missing
+Added `tests/integration/main.rs` — Rust binary that wraps `tests/run.sh all`
+
+**To verify (Adam runs):**
+```
+cd ~/projects/sync-launcher
+cargo test --lib                           # unit tests (wl_parser, applied_includes, project_state)
+cargo test --test integration              # integration suite via tests/run.sh
+bash tests/run.sh all                     # bash test runner (shell + integration)
+```
+
 ### Phase 1 ✅
 - [x] Binary builds with `nix build`
 - [x] All 8 language packs created (c, cpp, java, nix, python, r, rust, txt)
@@ -187,8 +205,26 @@ return {
 - [x] ctrl-e: opens `.wl` directly in `$EDITOR`
 - [x] ctrl-o: chdirs to project, opens project dir in Oil (`nvim -c Oil .`)
 
-### End-to-end testing — PENDING
-Requires Adam's environment to verify.
+### End-to-end testing — IN PROGRESS
+
+Test suite infrastructure added this session:
+- `src/lib.rs` — forge library crate exposing all modules
+- `src/wl_parser.rs` — 20+ unit tests covering parse functions
+- `tests/integration/main.rs` — Rust wrapper binary for test runner
+- `tests/unit/queries.md` — 11 Rust unit test query specs (already in repo)
+
+Adam, run these to validate:
+```
+# Unit tests (Rust)
+cd ~/projects/sync-launcher
+cargo test --lib
+
+# Full integration suite
+bash tests/run.sh all
+
+# Or cargo test for integration (binary wrapper)
+cargo test --test integration
+```
 
 - [ ] `forge create x --lang rust --no-open` — cargo init, git commit, direnv
 - [ ] `forge create x --lang python --no-open` — poetry init via nix develop

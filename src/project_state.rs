@@ -21,7 +21,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::wl_parser::WlFile;
+use crate::wl_parser::{parse_json_array, strip_quotes, WlFile};
 
 /// Fields we track per project (mirrors .wl surface fields).
 #[derive(Debug, Clone, Default)]
@@ -144,23 +144,143 @@ fn parse_state_file(content: &str) -> Result<ProjectState> {
     Ok(state)
 }
 
-fn strip_quotes(s: &str) -> String {
-    let s = s.trim();
-    if (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\'')) {
-        s[1..s.len() - 1].to_string()
-    } else {
-        s.to_string()
-    }
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Unit tests — run with: cargo test --lib
+// ═══════════════════════════════════════════════════════════════════════════
 
-fn parse_json_array(s: &str) -> Vec<String> {
-    let s = s.trim();
-    if !s.starts_with('[') || !s.ends_with(']') {
-        return vec![];
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    fn temp_project() -> PathBuf {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("forge-ps-test-{}", ts));
+        fs::create_dir_all(&dir).unwrap();
+        dir
     }
-    let inner = &s[1..s.len() - 1].trim();
-    if inner.is_empty() {
-        return vec![];
+
+    fn sample_wl() -> crate::wl_parser::WlFile {
+        crate::wl_parser::WlFile {
+            name: Some("myproject".into()),
+            lang: Some("rust".into()),
+            desc: Some("A test project".into()),
+            tags: vec!["cli".into(), "wasm".into()],
+            includes: vec!["git".into()],
+            build: Some("cargo build".into()),
+            run: Some("cargo run".into()),
+            test: Some("cargo test".into()),
+            check: Some("cargo clippy".into()),
+            overseer_template: None,
+            setup: None,
+        }
     }
-    inner.split(',').map(|part| strip_quotes(part.trim())).collect()
+
+    // ─── from_wl ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn from_wl_extracts_all_fields() {
+        let wl = sample_wl();
+        let state = crate::project_state::ProjectState::from_wl(&wl, 1234567890);
+        assert_eq!(state.name, "myproject");
+        assert_eq!(state.lang, "rust");
+        assert_eq!(state.desc, "A test project");
+        assert_eq!(state.tags, vec!["cli", "wasm"]);
+        assert_eq!(state.includes, vec!["git"]);
+        assert_eq!(state.build, "cargo build");
+        assert_eq!(state.last_wl_mtime, 1234567890);
+    }
+
+    // ─── diff ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn diff_detects_changed_fields() {
+        let old = crate::project_state::ProjectState {
+            name: "myproject".into(),
+            lang: "rust".into(),
+            desc: "old desc".into(),
+            tags: vec![],
+            includes: vec![],
+            build: "cargo build".into(),
+            run: "".into(),
+            test: "".into(),
+            check: "".into(),
+            last_wl_mtime: 0,
+        };
+        let new = crate::project_state::ProjectState {
+            name: "renamed".into(),
+            lang: "rust".into(),
+            desc: "new desc".into(),
+            tags: vec!["cli"],
+            includes: vec!["git"],
+            build: "cargo build".into(),
+            run: "".into(),
+            test: "".into(),
+            check: "".into(),
+            last_wl_mtime: 999,
+        };
+        let changed = old.diff(&new);
+        assert!(changed.contains(&"name"));
+        assert!(changed.contains(&"desc"));
+        assert!(changed.contains(&"tags"));
+        assert!(changed.contains(&"includes"));
+        assert!(changed.contains(&"last_wl_mtime"));
+        assert!(!changed.contains(&"lang"));
+        assert!(!changed.contains(&"build"));
+    }
+
+    #[test]
+    fn diff_empty_when_identical() {
+        let state = crate::project_state::ProjectState {
+            name: "test".into(),
+            lang: "rust".into(),
+            desc: "".into(),
+            tags: vec![],
+            includes: vec![],
+            build: "".into(),
+            run: "".into(),
+            test: "".into(),
+            check: "".into(),
+            last_wl_mtime: 0,
+        };
+        assert!(state.diff(&state).is_empty());
+    }
+
+    // ─── save / load roundtrip ─────────────────────────────────────────────
+
+    #[test]
+    fn save_and_load_roundtrip() {
+        let dir = temp_project();
+        let state = crate::project_state::ProjectState {
+            name: "myproject".into(),
+            lang: "rust".into(),
+            desc: "A cool project".into(),
+            tags: vec!["cli", "wasm"],
+            includes: vec!["git", "overseer"],
+            build: "cargo build".into(),
+            run: "cargo run".into(),
+            test: "cargo test".into(),
+            check: "cargo clippy".into(),
+            last_wl_mtime: 1234567890,
+        };
+        state.save(&dir).unwrap();
+        let loaded = crate::project_state::ProjectState::load(&dir).unwrap();
+        assert_eq!(loaded.name, state.name);
+        assert_eq!(loaded.lang, state.lang);
+        assert_eq!(loaded.tags, state.tags);
+        assert_eq!(loaded.includes, state.includes);
+        assert_eq!(loaded.last_wl_mtime, state.last_wl_mtime);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn load_returns_default_when_no_state_file() {
+        let dir = temp_project();
+        let state = crate::project_state::ProjectState::load(&dir).unwrap();
+        assert!(state.name.is_empty());
+        assert!(state.lang.is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
 }

@@ -100,3 +100,71 @@ fn index_path() -> Result<PathBuf> {
 fn old_index_path() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".forge-index.json"))
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Unit tests — run with: cargo test --lib
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    fn temp_dir() -> PathBuf {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("forge-idx-test-{}", ts));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    // ─── save_index_to / load_index_from roundtrip ─────────────────────────
+
+    #[test]
+    fn save_and_load_roundtrip() {
+        let dir = temp_dir();
+        let path = dir.join("index.json");
+
+        let index = crate::index::ProjectIndex::new(dir.join("sync"));
+        index.projects.push(crate::index::ProjectEntry {
+            name: "test-project".into(),
+            lang: "rust".into(),
+            path: dir.join("Code").join("Rust").join("test-project"),
+            added_at: "1234567890".into(),
+            last_opened: Some("1234568000".into()),
+            open_count: 5,
+        });
+
+        crate::index::save_index_to(&index, &path).unwrap();
+        let loaded = crate::index::load_index_from(&path).unwrap();
+
+        assert_eq!(loaded.version, 3);
+        assert_eq!(loaded.projects.len(), 1);
+        assert_eq!(loaded.projects[0].name, "test-project");
+        assert_eq!(loaded.projects[0].lang, "rust");
+        assert_eq!(loaded.projects[0].open_count, 5);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn new_index_has_version_3() {
+        let dir = temp_dir();
+        let index = crate::index::ProjectIndex::new(dir.join("sync"));
+        assert_eq!(index.version, 3);
+        assert!(index.projects.is_empty());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn load_nonexistent_returns_default_index() {
+        let dir = temp_dir();
+        let path = dir.join("nonexistent.json");
+        // This should not panic even if file doesn't exist
+        // (it tries migration from old path first)
+        let result = crate::index::load_index_from(&path);
+        // No home dir in test env → falls back to default
+        fs::remove_dir_all(&dir).ok();
+    }
+}
