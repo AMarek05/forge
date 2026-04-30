@@ -18,114 +18,22 @@ let
   # Pass your package via `extraSpecialArgs = { forgePkg = ...; }` in your flake setup.
   forge-binary = args.forgePkg or null;
 
-  # ─── Language definitions ───────────────────────────────────────────────────
+  # ─── Language and include lists ─────────────────────────────────────────────
+  # Add new languages/includes by creating a file in languages/ or includes/
 
-  rust-lang = {
-    description = "Rust project with cargo";
-    path = "Code/Rust";
-    direnv = "use flake";
-    buildInputs = [
-      "rustc"
-      "cargo"
-      "rustfmt"
-      "clippy"
-    ];
-  };
+  languages-list = [ "rust" "python" "c" "cpp" "java" "nix" "r" "txt" ];
+  includes-list   = [ "git" "overseer" ];
 
-  python-lang = {
-    description = "Python project with poetry";
-    path = "Code/Python";
-    direnv = "use flake";
-    buildInputs = [
-      "python311"
-      "poetry"
-    ];
-  };
+  # Load language definitions from individual files
+  all-languages = lib.mapAttrs (name: _: import (./languages + "/${name}.nix"))
+    (lib.genAttrs languages-list (name: name));
 
-  c-lang = {
-    description = "C project with gcc and make";
-    path = "Code/C";
-    direnv = "use flake";
-    buildInputs = [
-      "gcc"
-      "make"
-    ];
-  };
+  # Load include definitions from individual files
+  all-includes = lib.mapAttrs (name: _: import (./includes + "/${name}.nix"))
+    (lib.genAttrs includes-list (name: name));
 
-  cpp-lang = {
-    description = "C++ project with cmake";
-    path = "Code/C++";
-    direnv = "use flake";
-    buildInputs = [
-      "cmake"
-      "clang"
-    ];
-  };
-
-  java-lang = {
-    description = "Java project with maven";
-    path = "Code/Java";
-    direnv = "use flake";
-    buildInputs = [
-      "maven"
-      "jdk17"
-    ];
-  };
-
-  nix-lang = {
-    description = "Nix flake project";
-    path = "Code/Nix";
-    direnv = "use flake";
-    buildInputs = [ "nix" ];
-  };
-
-  r-lang = {
-    description = "R project with renv";
-    path = "Code/R";
-    direnv = "use flake";
-    buildInputs = [
-      "R"
-      "renv"
-    ];
-  };
-
-  txt-lang = {
-    description = "Plain text notes — no flake, no toolchain";
-    path = "Notes/txt";
-    direnv = "none";
-    buildInputs = [ ];
-  };
-
-  all-languages = {
-    rust = rust-lang;
-    python = python-lang;
-    c = c-lang;
-    cpp = cpp-lang;
-    java = java-lang;
-    nix = nix-lang;
-    r = r-lang;
-    txt = txt-lang;
-  };
-
-  # ─── Include definitions ─────────────────────────────────────────────────────
-
-  git-include = {
-    description = "Initialize git repo and set remote to GitHub";
-    provides = [
-      "git-init"
-      "git-remote"
-    ];
-  };
-
-  overseer-include = {
-    description = "Add overseer task runner integration";
-    provides = [ "overseer" ];
-  };
-
-  all-includes = {
-    git = git-include;
-    overseer = overseer-include;
-  };
+  default-languages = languages-list;
+  default-includes  = includes-list;
 
   # ─── Flake generation ────────────────────────────────────────────────────────
 
@@ -301,12 +209,6 @@ let
     builtins.readFile ./completion.zsh
   );
 
-  # ─── Config file generation ──────────────────────────────────────────────────
-
-  # Hardcoded default languages — always included from repo
-  default-languages = lib.attrNames all-languages;
-  default-includes  = lib.attrNames all-includes;
-
   # ─── Lang dir: default/ (HM-managed store) + custom/ (HM-managed, user-editable) ───
   lang-dir  = pkgs.runCommand "forge-languages" {
     preferLocalBuild = true;
@@ -315,7 +217,7 @@ let
     mkdir -p $out/default $out/custom
     ${lib.concatMapStrings (lang: ''
       mkdir -p $out/default/${lang}
-      cp ${lang-files.${lang}.flake_nix} $out/default/${lang}/flake.nix
+      cp ''${lang-files.${lang}.flake_nix} $out/default/${lang}/flake.nix
       cp ${lang-files.${lang}.setup_sh}  $out/default/${lang}/setup.sh
       cp ${lang-files.${lang}.lang_wl}   $out/default/${lang}/lang.wl
     '') default-languages}
@@ -324,44 +226,11 @@ let
   include-dir = pkgs.runCommand "forge-includes" {
     preferLocalBuild = true;
     allowSubstitutes = false;
-  } ''
-    mkdir -p $out/default $out/custom
-    ${lib.concatMapStrings (inc: ''
-      mkdir -p $out/default/${inc}
+  } ''\n    mkdir -p $out/default $out/custom
+    ${lib.concatMapStrings (inc: ''\n      mkdir -p $out/default/${inc}
       cp ${include-files.${inc}.include_wl} $out/default/${inc}/include.wl
       cp ${include-files.${inc}.setup_sh}   $out/default/${inc}/setup.sh
-    '') default-includes}
-  '';
-
-  # ─── Langs catalog JSON ───────────────────────────────────────────────────────
-  # Written to ~/.forge/langs.json — consumed by `forge sync --langs`
-  langs-catalog-json = builtins.toJSON (
-    lib.mapAttrsToList (name: lang: {
-      inherit name;
-      description = lang.description;
-      lang_wl = {
-        name     = name;
-        desc     = lang.description;
-        path     = lang.path;
-        direnv   = lang.direnv;
-        build    = "";
-        run      = "";
-        test     = "";
-        check    = "";
-      };
-    }) all-languages
-  );
-
-  # ─── Includes catalog JSON ───────────────────────────────────────────────────
-  # Written to ~/.forge/includes.json — consumed by `forge sync --includes`
-  includes-catalog-json = builtins.toJSON (
-    lib.mapAttrsToList (name: inc: {
-      inherit name;
-      description = inc.description;
-      provides    = inc.provides;
-      setup_sh    = builtins.readFile (generate-include-setup name inc);
-    }) all-includes
-  );
+    '') default-includes}\n  '';
 
 in
 
@@ -399,30 +268,6 @@ in
       description = "tmux binary path";
     };
 
-    languages = lib.mkOption {
-      default = [
-        "rust"
-        "python"
-        "c"
-        "cpp"
-        "nix"
-        "java"
-        "r"
-        "txt"
-      ];
-      type = lib.types.listOf lib.types.str;
-      description = "Language packs to generate";
-    };
-
-    includes = lib.mkOption {
-      default = [
-        "git"
-        "overseer"
-      ];
-      type = lib.types.listOf lib.types.str;
-      description = "Include modules to generate";
-    };
-
     package = lib.mkOption {
       default = forge-binary;
       type = lib.types.nullOr lib.types.package;
@@ -456,11 +301,6 @@ in
 
     home.file."${cfg.configDir}/langs/default".source  = lang-dir;
     home.file."${cfg.configDir}/includes/default".source = include-dir;
-
-    # Set env var at activation time via wrapper script that forges calls
-    home.file."${cfg.configDir}/forge.env" = {
-      text = "FORGE_CONFIG_DIR=${cfg.configDir}";
-    };
 
     home.sessionVariables = {
       FORGE_CONFIG_DIR = cfg.configDir;
