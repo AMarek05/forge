@@ -303,25 +303,16 @@ let
 
   # ─── Config file generation ──────────────────────────────────────────────────
 
-  config-json = pkgs.writeText "forge-config.json" (builtins.toJSON {
-    sync_base   = cfg.syncBase;
-    editor      = cfg.editor;
-    tmux_bin    = cfg.tmuxBinary;
-    github_user = cfg.githubUser;
-    lang_dir    = lang-dir;
-    include_dir  = include-dir;
-  });
-
-  lang-dir = pkgs.runCommand "forge-languages" {
+  lang-dir  = pkgs.runCommand "forge-languages" {
     preferLocalBuild = true;
     allowSubstitutes = false;
   } ''
     mkdir -p $out
     ${lib.concatMapStrings (lang: ''
       mkdir -p $out/${lang}
-      cp ${lang-files.${lang}."flake.nix"} $out/${lang}/flake.nix
-      cp ${lang-files.${lang}."setup.sh"}  $out/${lang}/setup.sh
-      cp ${lang-files.${lang}."lang.wl"}   $out/${lang}/lang.wl
+      cp ${lang-files.${lang}.flake.nix} $out/${lang}/flake.nix
+      cp ${lang-files.${lang}.setup.sh}  $out/${lang}/setup.sh
+      cp ${lang-files.${lang}.lang.wl}   $out/${lang}/lang.wl
     '') cfg.languages}
   '';
 
@@ -332,10 +323,42 @@ let
     mkdir -p $out
     ${lib.concatMapStrings (inc: ''
       mkdir -p $out/${inc}
-      cp ${include-files.${inc}."include.wl"} $out/${inc}/include.wl
-      cp ${include-files.${inc}."setup.sh"}   $out/${inc}/setup.sh
+      cp ${include-files.${inc}.include.wl} $out/${inc}/include.wl
+      cp ${include-files.${inc}.setup.sh}   $out/${inc}/setup.sh
     '') cfg.includes}
   '';
+
+  # ─── Langs catalog JSON ───────────────────────────────────────────────────────
+  # Written to ~/.forge/langs.json — consumed by `forge sync --langs`
+  langs-catalog-json = pkgs.writeText "langs.json" (
+    builtins.toJSON (
+      lib.mapAttrsToList (name: lang: {
+        inherit name;
+        description = lang.description;
+        lang_wl = {
+          name     = name;
+          desc     = lang.description;
+          path     = lang.path;
+          direnv   = lang.direnv;
+          build    = "";
+          run      = "";
+          test     = "";
+          check    = "";
+        };
+      }) all-languages
+    )
+  );
+
+  # ─── Includes catalog JSON ───────────────────────────────────────────────────
+  # Written to ~/.forge/includes.json — consumed by `forge sync --includes`
+  includes-catalog-list = lib.mapAttrsToList (name: inc: {
+    inherit name;
+    description = inc.description;
+    provides    = inc.provides;
+    setup_sh    = builtins.readFile (generate-include-setup name inc);
+  }) all-includes;
+
+  includes-catalog-json = pkgs.writeText "includes.json" (builtins.toJSON includes-catalog-list);
 
 in
 
@@ -417,11 +440,26 @@ in
       '';
     };
 
-    # Write config.json as a symlink to the store (immutable after build)
-    home.file."${cfg.configDir}/config.json".source = config-json;
+    # Write config.json directly (not a store symlink)
+    # lang_dir and include_dir point to local directories, not store paths
+    home.file."${cfg.configDir}/config.json".text = builtins.toJSON {
+      sync_base   = cfg.syncBase;
+      editor      = cfg.editor;
+      tmux_bin    = cfg.tmuxBinary;
+      github_user = cfg.githubUser;
+      lang_dir    = "${cfg.configDir}/langs";
+      include_dir = "${cfg.configDir}/includes";
+    };
 
-    # lang_dir and include_dir written as store paths, placed in config.json
-    # The JSON config references these store paths directly.
+    # langs.json and includes.json — catalogs for forge sync
+    home.file."${cfg.configDir}/langs.json".text     = langs-catalog-json;
+    home.file."${cfg.configDir}/includes.json".text   = includes-catalog-json;
+
+    # Symlink langs/default -> store path (HM-controlled, recreated on each rebuild)
+    # Symlink includes/default -> store path
+    home.file."${cfg.configDir}/langs/default".source     = lang-dir;
+    home.file."${cfg.configDir}/includes/default".source  = include-dir;
+
     home.sessionVariables = {
       FORGE_CONFIG_DIR = cfg.configDir;
     };

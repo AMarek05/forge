@@ -51,8 +51,9 @@ fn main() -> Result<()> {
             commands::remove(name),
         cli::Command::List { tags } =>
             commands::list(tags),
-        cli::Command::Sync =>
-            commands::sync(),
+        cli::Command::Sync { langs, includes } => {
+            commands::sync::run(&commands::SyncFlags { langs, includes })?;
+        }
         cli::Command::Cd { name, print } =>
             commands::cd(name, print),
         cli::Command::Session { name, setup, open } =>

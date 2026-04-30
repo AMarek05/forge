@@ -33,5 +33,6 @@ pub use pick::run as pick;
 pub use remove::run as remove;
 pub use session::run as session;
 pub use setup::run as setup;
-pub use sync::run as sync;
+pub use sync::run as _sync;
+pub use sync::SyncFlags;
 

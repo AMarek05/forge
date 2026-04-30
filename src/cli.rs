@@ -76,7 +76,15 @@ pub enum Command {
     },
 
     /// Re-scan FORGE_SYNC_BASE and rebuild the index
-    Sync,
+    Sync {
+        /// Refresh langs.json from filesystem scan
+        #[arg(long)]
+        langs: bool,
+
+        /// Refresh includes.json from filesystem scan
+        #[arg(long)]
+        includes: bool,
+    },
 
     /// cd into project directory. Use --print to print path only.
     Cd {
