@@ -108,6 +108,7 @@ fn old_index_path() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::PathBuf;
 
     fn temp_dir() -> PathBuf {
         let ts = std::time::SystemTime::now()
@@ -163,7 +164,7 @@ mod tests {
         let path = dir.join("nonexistent.json");
         // This should not panic even if file doesn't exist
         // (it tries migration from old path first)
-        let result = crate::index::load_index_from(&path);
+        let _result = crate::index::load_index_from(&path);
         // No home dir in test env → falls back to default
         fs::remove_dir_all(&dir).ok();
     }
