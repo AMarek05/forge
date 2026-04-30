@@ -168,8 +168,8 @@ mod tests {
             name: Some("myproject".into()),
             lang: Some("rust".into()),
             desc: Some("A test project".into()),
-            tags: vec!["cli", "wasm"],
-            includes: vec!["git"],
+            tags: vec!["cli".to_string(), "wasm".to_string()],
+            includes: vec!["git".to_string()],
             build: Some("cargo build".into()),
             run: Some("cargo run".into()),
             test: Some("cargo test".into()),
@@ -186,8 +186,8 @@ mod tests {
         assert_eq!(state.name, "myproject");
         assert_eq!(state.lang, "rust");
         assert_eq!(state.desc, "A test project");
-        assert_eq!(state.tags, vec!["cli", "wasm"]);
-        assert_eq!(state.includes, vec!["git"]);
+        assert_eq!(state.tags, vec!["cli".to_string(), "wasm".to_string()]);
+        assert_eq!(state.includes, vec!["git".to_string()]);
         assert_eq!(state.build, "cargo build");
         assert_eq!(state.last_wl_mtime, 1234567890);
     }
@@ -212,8 +212,8 @@ mod tests {
             name: "renamed".into(),
             lang: "rust".into(),
             desc: "new desc".into(),
-            tags: vec!["cli"],
-            includes: vec!["git"],
+            tags: vec!["cli".to_string()],
+            includes: vec!["git".to_string()],
             build: "cargo build".into(),
             run: "".into(),
             test: "".into(),
@@ -256,8 +256,8 @@ mod tests {
             name: "myproject".into(),
             lang: "rust".into(),
             desc: "A cool project".into(),
-            tags: vec!["cli", "wasm"],
-            includes: vec!["git", "overseer"],
+            tags: vec!["cli".to_string(), "wasm".to_string()],
+            includes: vec!["git".to_string(), "overseer".to_string()],
             build: "cargo build".into(),
             run: "cargo run".into(),
             test: "cargo test".into(),
