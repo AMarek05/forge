@@ -105,7 +105,7 @@ pub fn run(tags: Option<String>) -> Result<()> {
         "enter" | "" => {
             // Switch or create session
             let session_name = format!("forge-{}", project_name);
-            let tmux_bin = &config.tmux_binary;
+            let tmux_bin = &config.tmux_bin;
 
             // Check if session exists
             if Command::new(tmux_bin)

@@ -86,8 +86,7 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
 }
 
 fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
-    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
-    let lang_path = lang_dir.join(lang_name).join("lang.wl");
+    let lang_path = config.lang_dir.join(lang_name).join("lang.wl");
     parse_lang_wl(&lang_path)
         .with_context(|| format!("language '{}' not found in registry", lang_name))
 }
@@ -183,7 +182,7 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         return Ok(());
     }
 
-    let lang_dir = config.lang_dir.clone().unwrap_or_else(|| config.base.join("languages"));
+    let lang_dir = &config.lang_dir;
     let setup_sh = lang_dir.join(&lang.name).join("setup.sh");
     if !setup_sh.exists() {
         return Ok(());
@@ -196,12 +195,11 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
     let lang_name = &lang.name;
     let lang_template_dir = lang_dir.join(&lang.name);
 
-    let env_vars: [(&str, &str); 9] = [
+    let env_vars: [(&str, &str); 8] = [
         ("FORGE_PROJECT_NAME", &project_name),
         ("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or("")),
         ("FORGE_LANG", &lang_name),
         ("FORGE_LANG_TEMPLATE_DIR", &lang_template_dir.to_string_lossy()),
-        ("FORGE_BASE", config.base.to_str().unwrap_or("")),
         ("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or("")),
         ("FORGE_GITHUB_USER", &config.github_user),
         ("FORGE_EDITOR", &config.editor),
@@ -227,7 +225,7 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
 
 fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
     for inc_name in includes {
-        let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
+        let setup_sh = config.include_dir.join(inc_name).join("setup.sh");
         if !setup_sh.exists() {
             eprintln!("warning: include '{}' not found, skipping", inc_name);
             continue;
@@ -240,7 +238,6 @@ fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &Forg
         let env_vars = [
             ("FORGE_PROJECT_NAME", project_name),
             ("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or("")),
-            ("FORGE_BASE", config.base.to_str().unwrap_or("")),
             ("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or("")),
             ("FORGE_GITHUB_USER", &config.github_user),
             ("FORGE_EDITOR", &config.editor),

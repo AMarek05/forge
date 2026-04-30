@@ -28,7 +28,7 @@ pub fn run(name: Option<String>, setup: bool, open: bool) -> Result<()> {
         run_project_setup(&project.path.to_string_lossy())?;
     }
 
-    switch_or_create(&session_name, &project.path.to_string_lossy(), &config.tmux_binary)?;
+    switch_or_create(&session_name, &project.path.to_string_lossy(), &config.tmux_bin)?;
 
     if open {
         open_project(&project.path, &config)?;

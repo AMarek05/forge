@@ -15,7 +15,7 @@ pub fn run(_list: bool, add: bool, lang_name: Option<String>, path: Option<Strin
 
     // --list
     let config = ForgeConfig::load()?;
-    let langs_dir = config.base.join("languages");
+    let langs_dir = &config.lang_dir;
 
     if !langs_dir.exists() {
         println!("no languages found");
@@ -57,7 +57,7 @@ fn run_add(name: Option<&str>, path: Option<&str>, direnv: Option<&str>) -> Resu
     let direnv = direnv.unwrap_or("none");
 
     let config = ForgeConfig::load()?;
-    let langs_dir = config.base.join("languages").join(name);
+    let langs_dir = config.lang_dir.join(name);
     fs::create_dir_all(&langs_dir)?;
 
     // Write lang.wl
@@ -65,8 +65,6 @@ fn run_add(name: Option<&str>, path: Option<&str>, direnv: Option<&str>) -> Resu
 desc="{}"
 path="{}"
 direnv="{}"
-requires=[]
-setup_priority="10"
 build="nix build"
 run="nix run"
 test="nix flake check"

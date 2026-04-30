@@ -41,7 +41,7 @@ pub fn run(name: String, dry_run: bool) -> Result<()> {
 }
 
 fn run_lang_setup(lang_name: &str, project_path: &PathBuf, config: &ForgeConfig, dry_run: bool) -> Result<()> {
-    let setup_sh = config.base.join("languages").join(lang_name).join("setup.sh");
+    let setup_sh = config.lang_dir.join(lang_name).join("setup.sh");
     if !setup_sh.exists() {
         return Ok(());
     }
@@ -60,8 +60,7 @@ fn run_lang_setup(lang_name: &str, project_path: &PathBuf, config: &ForgeConfig,
         .env("FORGE_PROJECT_NAME", project_name)
         .env("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or(""))
         .env("FORGE_LANG", lang_name)
-        .env("FORGE_LANG_TEMPLATE_DIR", config.base.join("languages").join(lang_name).to_str().unwrap_or(""))
-        .env("FORGE_BASE", config.base.to_str().unwrap_or(""))
+        .env("FORGE_LANG_TEMPLATE_DIR", config.lang_dir.join(lang_name).to_str().unwrap_or(""))
         .env("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or(""))
         .env("FORGE_GITHUB_USER", &config.github_user)
         .env("FORGE_EDITOR", &config.editor)
@@ -78,7 +77,7 @@ fn run_lang_setup(lang_name: &str, project_path: &PathBuf, config: &ForgeConfig,
 }
 
 fn run_include_setup(inc_name: &str, project_path: &PathBuf, config: &ForgeConfig, dry_run: bool) -> Result<()> {
-    let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
+    let setup_sh = config.include_dir.join(inc_name).join("setup.sh");
     if !setup_sh.exists() {
         eprintln!("warning: include '{}' not found, skipping", inc_name);
         return Ok(());
@@ -97,7 +96,6 @@ fn run_include_setup(inc_name: &str, project_path: &PathBuf, config: &ForgeConfi
         .arg(&setup_sh)
         .env("FORGE_PROJECT_NAME", project_name)
         .env("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or(""))
-        .env("FORGE_BASE", config.base.to_str().unwrap_or(""))
         .env("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or(""))
         .env("FORGE_GITHUB_USER", &config.github_user)
         .env("FORGE_EDITOR", &config.editor)

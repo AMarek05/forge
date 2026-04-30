@@ -23,14 +23,14 @@ pub fn run(list: bool, name: Option<String>) -> Result<()> {
 
 fn run_list() -> Result<()> {
     let config = ForgeConfig::load()?;
-    let includes_dir = config.base.join("includes");
+    let includes_dir = &config.include_dir;
 
     if !includes_dir.exists() {
         println!("no includes found");
         return Ok(());
     }
 
-    let mut entries: Vec<_> = fs::read_dir(&includes_dir)?
+    let mut entries: Vec<_> = fs::read_dir(includes_dir)?
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_dir())
         .collect();
@@ -56,7 +56,7 @@ fn run_list() -> Result<()> {
 
 fn run_show(name: &str) -> Result<()> {
     let config = ForgeConfig::load()?;
-    let wl_path = config.base.join("includes").join(name).join("include.wl");
+    let wl_path = config.include_dir.join(name).join("include.wl");
 
     if !wl_path.exists() {
         anyhow::bail!("include '{}' not found", name);

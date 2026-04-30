@@ -38,7 +38,7 @@ fn main() -> Result<()> {
 
     if args.contains(&"--print-lang-dir".to_string()) {
         let config = config::ForgeConfig::load()?;
-        println!("{}", config.lang_dir.unwrap_or_default().display());
+        println!("{}", config.lang_dir.display());
         return Ok(());
     }
 

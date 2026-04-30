@@ -126,7 +126,7 @@ pub fn verify_and_diff(project_path: &PathBuf, config: &ForgeConfig) -> Result<(
 }
 
 fn run_include_setup(inc_name: &str, project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
-    let setup_sh = config.base.join("includes").join(inc_name).join("setup.sh");
+    let setup_sh = config.include_dir.join(inc_name).join("setup.sh");
     if !setup_sh.exists() {
         anyhow::bail!("include '{}' not found in includes/ — check your .wl", inc_name);
     }
@@ -139,7 +139,6 @@ fn run_include_setup(inc_name: &str, project_path: &PathBuf, config: &ForgeConfi
         .arg(&setup_sh)
         .env("FORGE_PROJECT_NAME", project_name)
         .env("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or(""))
-        .env("FORGE_BASE", config.base.to_str().unwrap_or(""))
         .env("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or(""))
         .env("FORGE_GITHUB_USER", &config.github_user)
         .env("FORGE_EDITOR", &config.editor)

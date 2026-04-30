@@ -208,7 +208,6 @@ let
       desc="${lang.description}"
       path="${lang.path}"
       direnv="${lang.direnv}"
-      setup_priority="10"
       build=""
       run=""
       test=""
@@ -238,27 +237,27 @@ let
           ''
         else if name == "overseer" then
           ''
-                        set -e
-                        TEMPLATE_DIR="$HOME/.local/share/nvim/site/lua/overseer/template/forge"
-                        mkdir -p "$TEMPLATE_DIR"
-                        parse_wl_field() {
-                          grep -E "^$1=" "$FORGE_PROJECT_PATH/.wl" 2>/dev/null | head -1 | sed 's/^[^=]*=//' | tr -d '"' | xargs
-                        }
-                        BUILD_CMD=$(parse_wl_field "build")
-                        RUN_CMD=$(parse_wl_field "run")
-                        TEST_CMD=$(parse_wl_field "test")
-                        CHECK_CMD=$(parse_wl_field "check")
+            set -e
+            TEMPLATE_DIR="$HOME/.local/share/nvim/site/lua/overseer/template/forge"
+            mkdir -p "$TEMPLATE_DIR"
+            parse_wl_field() {
+              grep -E "^$1=" "$FORGE_PROJECT_PATH/.wl" 2>/dev/null | head -1 | sed 's/^[^=]*=//' | tr -d '"' | xargs
+            }
+            BUILD_CMD=$(parse_wl_field "build")
+            RUN_CMD=$(parse_wl_field "run")
+            TEST_CMD=$(parse_wl_field "test")
+            CHECK_CMD=$(parse_wl_field "check")
 
-                        BUILD_CMD="''${BUILD_CMD:-nix build}"
-                        RUN_CMD="''${RUN_CMD:-nix run}"
-                        TEST_CMD="''${TEST_CMD:-nix flake check}"
-                        CHECK_CMD="''${CHECK_CMD:-nix flake check}"
+            BUILD_CMD="''${BUILD_CMD:-nix build}"
+            RUN_CMD="''${RUN_CMD:-nix run}"
+            TEST_CMD="''${TEST_CMD:-nix flake check}"
+            CHECK_CMD="''${CHECK_CMD:-nix flake check}"
 
-                        escape_lua() { printf '%s' "$1" | sed 's/["\\]/\\&/g'; }
-                        write_template() {
-                          local task_name="$1" cmd="$2" tag="$3"
-                          local escaped=$(escape_lua "$cmd")
-                          cat > "''${TEMPLATE_DIR}/''${FORGE_PROJECT_NAME}_''${task_name}.lua" << LUAEOF
+            escape_lua() { printf '%s' "$1" | sed 's/["\\]/\\&/g'; }
+            write_template() {
+              local task_name="$1" cmd="$2" tag="$3"
+              local escaped=$(escape_lua "$cmd")
+              cat > "''${TEMPLATE_DIR}/''${FORGE_PROJECT_NAME}_''${task_name}.lua" << LUAEOF
             return {
               name = "''${FORGE_PROJECT_NAME}:''${task_name}",
               builder = function()
@@ -272,10 +271,10 @@ let
               desc = "''${FORGE_PROJECT_NAME}:''${task_name}",
             }
             LUAEOF
-                        }
-                        write_template "build" "$BUILD_CMD" "BUILD"
-                        write_template "run" "$RUN_CMD" "RUN"
-                        write_template "check" "$CHECK_CMD" "TEST"
+            }
+            write_template "build" "$BUILD_CMD" "BUILD"
+            write_template "run" "$RUN_CMD" "RUN"
+            write_template "check" "$CHECK_CMD" "TEST"
           ''
         else
           "";
@@ -302,11 +301,57 @@ let
     builtins.readFile ./completion.zsh
   );
 
+  # ─── Config file generation ──────────────────────────────────────────────────
+
+  config-json = pkgs.writeTextFile {
+    name = "forge-config.json";
+    destination = "/config.json";
+    text = builtins.toJSON {
+      sync_base   = cfg.syncBase;
+      editor      = cfg.editor;
+      tmux_bin    = cfg.tmuxBinary;
+      github_user = cfg.githubUser;
+      lang_dir    = lang-dir;
+      include_dir = include-dir;
+    };
+  };
+
+  lang-dir = pkgs.runCommand "forge-languages" {
+    preferLocalBuild = true;
+    allowSubstitutes = false;
+  } ''
+    mkdir -p $out
+    ${lib.concatMapStrings (lang: ''
+      mkdir -p $out/${lang}
+      cp ${lang-files.${lang}."flake.nix"} $out/${lang}/flake.nix
+      cp ${lang-files.${lang}."setup.sh"}  $out/${lang}/setup.sh
+      cp ${lang-files.${lang}."lang.wl"}   $out/${lang}/lang.wl
+    '') cfg.languages}
+  '';
+
+  include-dir = pkgs.runCommand "forge-includes" {
+    preferLocalBuild = true;
+    allowSubstitutes = false;
+  } ''
+    mkdir -p $out
+    ${lib.concatMapStrings (inc: ''
+      mkdir -p $out/${inc}
+      cp ${include-files.${inc}."include.wl"} $out/${inc}/include.wl
+      cp ${include-files.${inc}."setup.sh"}   $out/${inc}/setup.sh
+    '') cfg.includes}
+  '';
+
 in
 
 {
   options.forge = {
     enable = lib.mkEnableOption "forge — tmux sessionizer";
+
+    configDir = lib.mkOption {
+      default = "${config.home.homeDirectory}/.forge";
+      type = lib.types.path;
+      description = "Directory where forge stores config and runtime state";
+    };
 
     syncBase = lib.mkOption {
       default = "${config.home.homeDirectory}/sync";
@@ -376,42 +421,13 @@ in
       '';
     };
 
+    # Write config.json as a symlink to the store (immutable after build)
+    home.file."${cfg.configDir}/config.json".source = config-json;
+
+    # lang_dir and include_dir written as store paths, placed in config.json
+    # The JSON config references these store paths directly.
     home.sessionVariables = {
-      FORGE_SYNC_BASE = cfg.syncBase;
-      FORGE_EDITOR = cfg.editor;
-      FORGE_GITHUB_USER = cfg.githubUser;
-      FORGE_TMUX_BINARY = cfg.tmuxBinary;
-
-      FORGE_LANG_DIR =
-        pkgs.runCommand "forge-languages"
-          {
-            preferLocalBuild = true;
-            allowSubstitutes = false;
-          }
-          ''
-            mkdir -p $out
-            ${lib.concatMapStrings (lang: ''
-              mkdir -p $out/${lang}
-              cp ${lang-files.${lang}."flake.nix"} $out/${lang}/flake.nix
-              cp ${lang-files.${lang}."setup.sh"}  $out/${lang}/setup.sh
-              cp ${lang-files.${lang}."lang.wl"}   $out/${lang}/lang.wl
-            '') cfg.languages}
-          '';
-
-      FORGE_INCLUDE_DIR =
-        pkgs.runCommand "forge-includes"
-          {
-            preferLocalBuild = true;
-            allowSubstitutes = false;
-          }
-          ''
-            mkdir -p $out
-            ${lib.concatMapStrings (inc: ''
-              mkdir -p $out/${inc}
-              cp ${include-files.${inc}."include.wl"} $out/${inc}/include.wl
-              cp ${include-files.${inc}."setup.sh"}   $out/${inc}/setup.sh
-            '') cfg.includes}
-          '';
+      FORGE_CONFIG_DIR = cfg.configDir;
     };
   };
 }

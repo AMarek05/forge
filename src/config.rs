@@ -1,81 +1,87 @@
-#![allow(dead_code)]
-//! Parse `~/.forge/config.sh` shell-style exports into a ForgeConfig struct.
+//! Forge configuration — loaded from $FORGE_CONFIG_DIR/config.json (written by HM module).
+//!
+//! Layout:
+//!   $FORGE_CONFIG_DIR/          (e.g. ~/.forge)
+//!     config.json              — structured config (store symlink, immutable after build)
+//!     index.json              — project index (mutable)
+//!
+//! The config file is a symlink to a Nix store path.
+//! All other runtime state lives under $FORGE_CONFIG_DIR.
 
-use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use regex::Regex;
+use serde::Deserialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ForgeConfig {
-    pub github_user: String,
-    pub default_remote_base: String,
     pub sync_base: PathBuf,
-    pub base: PathBuf,
     pub editor: String,
-    pub tmux_binary: String,
-    pub path_override: Option<String>,
-    pub lang_dir: Option<PathBuf>,
-    pub include_dir: Option<PathBuf>,
+    pub tmux_bin: String,
+    pub github_user: String,
+    pub lang_dir: PathBuf,
+    pub include_dir: PathBuf,
+    #[serde(skip_deserializing)]
+    config_dir: PathBuf,
 }
 
 impl ForgeConfig {
+    /// Load from $FORGE_CONFIG_DIR/config.json (set by HM module).
+    /// No fallback — errors if env var absent or config file missing.
     pub fn load() -> Result<Self> {
-        let config_path = dirs::home_dir()
-            .context("no home dir")?
-            .join(".forge/config.sh");
+        let config_dir = std::env::var("FORGE_CONFIG_DIR")
+            .context("FORGE_CONFIG_DIR env var not set — HM module should set this")?;
 
+        let config_dir = PathBuf::from(&config_dir);
+        let config_path = config_dir.join("config.json");
+
+        if !config_path.exists() {
+            anyhow::bail!(
+                "config file not found at {} — rebuild HM module to generate it",
+                config_path.display()
+            );
+        }
+
+        Self::load_from_path(&config_dir)
+    }
+
+    /// Load from an explicit config directory path.
+    pub fn load_from_path(config_dir: &Path) -> Result<Self> {
+        let config_path = config_dir.join("config.json");
         let content = fs::read_to_string(&config_path)
             .with_context(|| format!("failed to read {}", config_path.display()))?;
 
-        Self::parse(&content)
+        let mut config: ForgeConfig = serde_json::from_str(&content)
+            .with_context(|| format!("failed to parse {}", config_path.display()))?;
+
+        // Resolve symlinks so paths are canonical
+        config.config_dir = config_dir.canonicalize()
+            .unwrap_or_else(|_| PathBuf::from(config_dir));
+        config.lang_dir = config.lang_dir.canonicalize().unwrap_or(config.lang_dir);
+        config.include_dir = config.include_dir.canonicalize().unwrap_or(config.include_dir);
+        config.sync_base = config.sync_base.canonicalize().unwrap_or(config.sync_base);
+
+        Ok(config)
     }
 
-    fn parse(content: &str) -> Result<Self> {
-        let mut vars: HashMap<String, String> = HashMap::new();
+    /// Directory containing config.json and index.json (e.g. ~/.forge)
+    pub fn config_dir(&self) -> PathBuf {
+        self.config_dir.clone()
+    }
 
-        let export_re = Regex::new(r#"^\s*export\s+([A-Z_]+)="([^"]*)"\s*$"#).unwrap();
-        let simple_re = Regex::new(r#"^\s*([A-Z_]+)="([^"]*)"\s*$"#).unwrap();
+    /// Project index file path
+    pub fn index_path(&self) -> PathBuf {
+        self.config_dir.join("index.json")
+    }
 
-        for line in content.lines() {
-            let line = line.trim();
+    /// Per-project state directory (inside config_dir)
+    pub fn state_dir(&self) -> PathBuf {
+        self.config_dir.join("state")
+    }
 
-            // Skip comments and empty lines
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
-
-            // Try export pattern first
-            if let Some(caps) = export_re.captures(line) {
-                let key = caps.get(1).unwrap().as_str().to_string();
-                let val = caps.get(2).unwrap().as_str().to_string();
-                vars.insert(key, val);
-            } else if let Some(caps) = simple_re.captures(line) {
-                let key = caps.get(1).unwrap().as_str().to_string();
-                let val = caps.get(2).unwrap().as_str().to_string();
-                vars.insert(key, val);
-            }
-        }
-
-        // Expand $HOME in paths
-        let home = dirs::home_dir().unwrap_or_default();
-        let expand = |s: &str| s.replace("$HOME", home.to_str().unwrap_or(""));
-
-        let sync_base = expand(vars.get("FORGE_SYNC_BASE").unwrap_or(&format!("{}/sync", home.display())));
-        let base = expand(vars.get("FORGE_BASE").unwrap_or(&format!("{}/.forge", home.display())));
-
-        Ok(ForgeConfig {
-            github_user: vars.get("FORGE_GITHUB_USER").cloned().unwrap_or_default(),
-            default_remote_base: vars.get("FORGE_DEFAULT_REMOTE_BASE").cloned().unwrap_or_default(),
-            sync_base: PathBuf::from(sync_base),
-            base: PathBuf::from(base),
-            editor: vars.get("FORGE_EDITOR").cloned().unwrap_or_else(|| "nvim".to_string()),
-            tmux_binary: vars.get("FORGE_TMUX_BINARY").cloned().unwrap_or_else(|| "tmux".to_string()),
-            path_override: vars.get("FORGE_PATH_OVERRIDE").cloned().filter(|s| !s.is_empty()),
-            lang_dir: vars.get("FORGE_LANG_DIR").map(PathBuf::from),
-            include_dir: vars.get("FORGE_INCLUDE_DIR").map(PathBuf::from),
-        })
+    /// Project root — same as sync_base
+    pub fn projects_dir(&self) -> PathBuf {
+        self.sync_base.clone()
     }
 }

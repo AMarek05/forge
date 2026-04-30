@@ -90,11 +90,9 @@ pub fn save_index_to(index: &ProjectIndex, path: &PathBuf) -> Result<()> {
 }
 
 fn index_path() -> Result<PathBuf> {
-    if let Ok(base) = std::env::var("FORGE_BASE") {
-        return Ok(PathBuf::from(base).join("index.json"));
-    }
-    let home = dirs::home_dir().context("no home dir")?;
-    Ok(home.join(".forge").join("index.json"))
+    let config_dir = std::env::var("FORGE_CONFIG_DIR")
+        .context("FORGE_CONFIG_DIR not set — HM module should set this")?;
+    Ok(PathBuf::from(config_dir).join("index.json"))
 }
 
 fn old_index_path() -> Option<PathBuf> {
