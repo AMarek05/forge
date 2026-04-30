@@ -86,6 +86,7 @@ impl ProjectState {
         if self.run != other.run { changed.push("run"); }
         if self.test != other.test { changed.push("test"); }
         if self.check != other.check { changed.push("check"); }
+        if self.last_wl_mtime != other.last_wl_mtime { changed.push("last_wl_mtime"); }
         changed
     }
 
