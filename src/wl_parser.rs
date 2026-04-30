@@ -106,13 +106,13 @@ fn parse_fields(content: &str, path: &Path) -> Result<HashMap<String, String>> {
                 // JSON array — keep as-is for later parsing
                 raw_value.to_string()
             } else {
-                // Quoted string — strip quotes
-                let trimmed = raw_value.trim();
-                if !(trimmed.starts_with('"') && trimmed.ends_with('"')
-                    || trimmed.starts_with('\'') && trimmed.ends_with('\'')) {
+                // Strip inline comment before processing
+                let clean = raw_value.split('#').next().unwrap_or(raw_value).trim();
+                if !(clean.starts_with('"') && clean.ends_with('"')
+                    || clean.starts_with('\'') && clean.ends_with('\'')) {
                     anyhow::bail!("string value must be quoted: {}", raw_value);
                 }
-                strip_quotes(raw_value)
+                strip_quotes(raw_value.split('#').next().unwrap_or(raw_value))
             };
 
             fields.insert(key, value);
