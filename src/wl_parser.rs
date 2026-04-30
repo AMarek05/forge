@@ -15,21 +15,20 @@ use anyhow::{Context, Result};
 use regex::Regex;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Language {
     pub name: String,
     pub desc: String,
     pub path: String,
     pub direnv: String,
-    pub setup_priority: i32,
     pub build: Option<String>,
     pub run: Option<String>,
     pub test: Option<String>,
     pub check: Option<String>,
-    pub overseer_template: Option<String>,
-    pub setup: Option<String>,
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct WlFile {
     pub name: Option<String>,
     pub lang: Option<String>,
@@ -40,8 +39,6 @@ pub struct WlFile {
     pub run: Option<String>,
     pub test: Option<String>,
     pub check: Option<String>,
-    pub overseer_template: Option<String>,
-    pub setup: Option<String>,
 }
 
 pub fn parse_lang_wl(path: &Path) -> Result<Language> {
@@ -55,16 +52,10 @@ pub fn parse_lang_wl(path: &Path) -> Result<Language> {
         desc: fields.get("desc").cloned().unwrap_or_default(),
         path: fields.get("path").cloned().unwrap_or_default(),
         direnv: fields.get("direnv").cloned().unwrap_or_default(),
-        setup_priority: fields
-            .get("setup_priority")
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(0),
         build: fields.get("build").cloned(),
         run: fields.get("run").cloned(),
         test: fields.get("test").cloned(),
         check: fields.get("check").cloned(),
-        overseer_template: fields.get("overseer_template").cloned(),
-        setup: fields.get("setup").cloned(),
     })
 }
 
@@ -92,8 +83,6 @@ pub fn parse_wl(path: &Path) -> Result<WlFile> {
         run: fields.get("run").cloned(),
         test: fields.get("test").cloned(),
         check: fields.get("check").cloned(),
-        overseer_template: fields.get("overseer_template").cloned(),
-        setup: fields.get("setup").cloned(),
     })
 }
 
@@ -339,7 +328,6 @@ run="cargo run"
         let lang = crate::wl_parser::parse_lang_wl(&p).unwrap();
         cleanup(&p);
         assert_eq!(lang.name, "rust");
-        assert_eq!(lang.setup_priority, 100);
         assert_eq!(lang.build, Some("cargo build".into()));
     }
 

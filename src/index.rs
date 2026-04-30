@@ -127,7 +127,7 @@ mod tests {
         let dir = temp_dir();
         let path = dir.join("index.json");
 
-        let index = crate::index::ProjectIndex::new(dir.join("sync"));
+        let mut index = crate::index::ProjectIndex::new(dir.join("sync"));
         index.projects.push(crate::index::ProjectEntry {
             name: "test-project".into(),
             lang: "rust".into(),

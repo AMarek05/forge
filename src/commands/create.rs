@@ -132,13 +132,6 @@ fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, 
         }
     }
 
-    // overseer_template if lang has one
-    if let Some(ref ot) = lang.overseer_template {
-        if !ot.is_empty() {
-            lines.push(format!("overseer_template=\"{}\"", ot));
-        }
-    }
-
     // Carry over existing user-modified fields if .wl already exists
     if let Some(ref path) = existing_wl {
         if let Ok(existing) = parse_wl(path) {
