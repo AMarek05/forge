@@ -30,7 +30,8 @@ fn main() {
     let status = Command::new("bash")
         .args(["tests/run.sh", "all"])
         .current_dir(env::current_dir().unwrap())
-        .status();
+        .status()
+        .expect("failed to run tests");
 
     std::process::exit(status.code().unwrap_or(1));
 }
