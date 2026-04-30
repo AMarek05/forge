@@ -310,9 +310,9 @@ let
     mkdir -p $out
     ${lib.concatMapStrings (lang: ''
       mkdir -p $out/${lang}
-      cp ${lang-files.${lang}.flake.nix} $out/${lang}/flake.nix
-      cp ${lang-files.${lang}.setup.sh}  $out/${lang}/setup.sh
-      cp ${lang-files.${lang}.lang.wl}   $out/${lang}/lang.wl
+      cp ''${lang-files.${lang}."flake.nix"} $out/${lang}/flake.nix
+      cp ''${lang-files.${lang}."setup.sh"}  $out/${lang}/setup.sh
+      cp ''${lang-files.${lang}."lang.wl"}   $out/${lang}/lang.wl
     '') cfg.languages}
   '';
 
@@ -323,8 +323,8 @@ let
     mkdir -p $out
     ${lib.concatMapStrings (inc: ''
       mkdir -p $out/${inc}
-      cp ${include-files.${inc}.include.wl} $out/${inc}/include.wl
-      cp ${include-files.${inc}.setup.sh}   $out/${inc}/setup.sh
+      cp ''${include-files.${inc}."include.wl"} $out/${inc}/include.wl
+      cp ''${include-files.${inc}."setup.sh"}   $out/${inc}/setup.sh
     '') cfg.includes}
   '';
 
