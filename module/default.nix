@@ -24,6 +24,18 @@ let
     builtins.readFile ./completion.zsh
   );
 
+  # Config file as store symlink
+  config-json-file = builtins.toFile "config.json" (
+    builtins.toJSON {
+      sync_base   = cfg.syncBase;
+      editor      = cfg.editor;
+      tmux_bin    = cfg.tmuxBinary;
+      github_user = cfg.githubUser;
+      lang_dir    = "${cfg.configDir}/langs";
+      include_dir = "${cfg.configDir}/includes";
+    }
+  );
+
 in
 
 {
@@ -80,18 +92,17 @@ in
       '';
     };
 
-    # Write config.json directly (not a store symlink)
-    home.file."${cfg.configDir}/config.json".text = builtins.toJSON {
-      sync_base   = cfg.syncBase;
-      editor      = cfg.editor;
-      tmux_bin    = cfg.tmuxBinary;
-      github_user = cfg.githubUser;
-      lang_dir    = "${cfg.configDir}/langs";
-      include_dir = "${cfg.configDir}/includes";
-    };
+    # config.json as store symlink
+    home.file."${cfg.configDir}/config.json".source = config-json-file;
 
+    # langs/default and includes/default — store dirs with language/include files
     home.file."${cfg.configDir}/langs/default".source     = langs.lang-dir;
-    home.file."${cfg.configDir}/includes/default".source  = incs.include-dir;
+    home.file."${cfg.configDir}/includes/default".source = incs.include-dir;
+
+    # custom/ dirs — empty placeholders for user-added langs/includes
+    # forge sync --langs and --includes scan default/ + custom/ and write the JSONs
+    home.file."${cfg.configDir}/langs/custom".source      = pkgs.runCommand "forge-langs-custom" {} "mkdir -p $out";
+    home.file."${cfg.configDir}/includes/custom".source   = pkgs.runCommand "forge-includes-custom" {} "mkdir -p $out";
 
     home.sessionVariables = {
       FORGE_CONFIG_DIR = cfg.configDir;
