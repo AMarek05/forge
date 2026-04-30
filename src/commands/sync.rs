@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use crate::verify_and_diff::verify_and_diff;
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
-use crate::wl_parser::parse_wl;
+use crate::wl_parser::{parse_wl, parse_json_array, parse_lang_wl};
 
 /// Entry point — called from main.rs with parsed sync flags.
 pub fn run(flags: &SyncFlags) -> Result<()> {
@@ -40,7 +40,7 @@ pub struct SyncFlags {
 
 fn sync_langs(config: &ForgeConfig) -> Result<()> {
     let langs_dir = &config.lang_dir;
-    let output_path = config.config_dir.join("langs.json");
+    let output_path = config.config_dir().join("langs.json");
 
     let mut entries = vec![];
 
@@ -68,18 +68,20 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
                             .unwrap_or("unknown")
                             .to_string()
                     });
+                    // Use parse_lang_wl to get full lang metadata (includes path, direnv)
+                    let lang_meta = parse_lang_wl(&wl_path)?;
                     entries.push(serde_json::json!({
                         "name": name,
-                        "description": wl.desc.unwrap_or_default(),
+                        "description": lang_meta.desc,
                         "lang_wl": {
-                            "name": wl.name,
-                            "desc": wl.desc,
-                            "path": wl.path,
-                            "direnv": wl.direnv,
-                            "build": wl.build.unwrap_or_default(),
-                            "run": wl.run.unwrap_or_default(),
-                            "test": wl.test.unwrap_or_default(),
-                            "check": wl.check.unwrap_or_default(),
+                            "name": lang_meta.name,
+                            "desc": lang_meta.desc,
+                            "path": lang_meta.path,
+                            "direnv": lang_meta.direnv,
+                            "build": lang_meta.build.unwrap_or_default(),
+                            "run": lang_meta.run.unwrap_or_default(),
+                            "test": lang_meta.test.unwrap_or_default(),
+                            "check": lang_meta.check.unwrap_or_default(),
                         }
                     }));
                 }
@@ -103,7 +105,7 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
 
 fn sync_includes(config: &ForgeConfig) -> Result<()> {
     let includes_dir = &config.include_dir;
-    let output_path = config.config_dir.join("includes.json");
+    let output_path = config.config_dir().join("includes.json");
 
     let mut entries = vec![];
 
@@ -197,7 +199,7 @@ fn sync_projects(config: &ForgeConfig) -> Result<()> {
 
         // Diff includes against applied-includes and run missing setups
         let project_path = PathBuf::from(&path);
-        if let Err(e) = verify_and_diff(&project_path, config.clone()) {
+        if let Err(e) = verify_and_diff(&project_path, &config) {
             eprintln!("warning: {}: {} — skipping include sync", project_path.display(), e);
         }
 
