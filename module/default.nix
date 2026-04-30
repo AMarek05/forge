@@ -330,35 +330,33 @@ let
 
   # ─── Langs catalog JSON ───────────────────────────────────────────────────────
   # Written to ~/.forge/langs.json — consumed by `forge sync --langs`
-  langs-catalog-json = pkgs.writeText "langs.json" (
-    builtins.toJSON (
-      lib.mapAttrsToList (name: lang: {
-        inherit name;
-        description = lang.description;
-        lang_wl = {
-          name     = name;
-          desc     = lang.description;
-          path     = lang.path;
-          direnv   = lang.direnv;
-          build    = "";
-          run      = "";
-          test     = "";
-          check    = "";
-        };
-      }) all-languages
-    )
+  langs-catalog-json = builtins.toJSON (
+    lib.mapAttrsToList (name: lang: {
+      inherit name;
+      description = lang.description;
+      lang_wl = {
+        name     = name;
+        desc     = lang.description;
+        path     = lang.path;
+        direnv   = lang.direnv;
+        build    = "";
+        run      = "";
+        test     = "";
+        check    = "";
+      };
+    }) all-languages
   );
 
   # ─── Includes catalog JSON ───────────────────────────────────────────────────
   # Written to ~/.forge/includes.json — consumed by `forge sync --includes`
-  includes-catalog-list = lib.mapAttrsToList (name: inc: {
-    inherit name;
-    description = inc.description;
-    provides    = inc.provides;
-    setup_sh    = builtins.readFile (generate-include-setup name inc);
-  }) all-includes;
-
-  includes-catalog-json = pkgs.writeText "includes.json" (builtins.toJSON includes-catalog-list);
+  includes-catalog-json = builtins.toJSON (
+    lib.mapAttrsToList (name: inc: {
+      inherit name;
+      description = inc.description;
+      provides    = inc.provides;
+      setup_sh    = builtins.readFile (generate-include-setup name inc);
+    }) all-includes
+  );
 
 in
 
