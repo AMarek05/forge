@@ -1,124 +1,167 @@
 # Restructuring Plan
 
 **Goal:** Remove hardcoded `~/.forge` from binary, drop `config.sh` shell parsing, make config a structured file, remove hardcoded language list from module.
+**Status:** Phase 1 ready. Phase 2 deferred.
+**Prerequisite for all phases:** `nix build .#forge` must pass throughout.
 
 ---
 
-## Phase 1 — Config File Restructure
+## Phase 1 — Config file restructure
+**Config dir set by HM via `FORGE_CONFIG_DIR`, binary reads from it. No flag, no fallback. Error if missing.
 
-### Binary side
+### 1.1 — Binary: `src/config.rs` — JSON config, error if not found
 
-**`src/config.rs`**
-- Replace `load()` with `load_from(config_path: &Path) -> Result<Self>`
-- Parse a structured config file (JSON or TOML) instead of shell script
-- Add `--config <path>` CLI flag, default: `$FORGE_CONFIG` env var, fallback to `~/.forge/config`
-- Fields: `github_user`, `sync_base`, `editor`, `tmux_binary`, `lang_dir`, `include_dir`
-- No shell evaluation, no regex for `export VAR="..."` — just clean structured parsing
-- `base` (config directory itself) derived from config file location
-- Remove `default_remote_base`, `path_override`, `path_override` from config (not needed)
+**Changes to `ForgeConfig`:**
+Remove fields that are redundant or not needed:
+- `base` — no longer needed (derive from `FORGE_CONFIG_DIR` at runtime)
+- `default_remote_base` — can be computed at module level, not needed in config
+- `path_override` — removed in new design
 
-**`src/cli.rs`**
-- Add `--config <path>` flag to CLI args
-- Remove `FORGE_PATH_OVERRIDE` env var usage entirely — not needed if config is structured
+Keep:
+- `github_user: String`
+- `sync_base: PathBuf`
+- `editor: String`
+- `tmux_binary: String`  
+- `lang_dir: PathBuf`
+- `include_dir: PathBuf`
+- `index_path: PathBuf` (derived from config dir / index.json)
+- `state_dir: PathBuf` (derived from config dir / state/)
+- `projects_dir: PathBuf` (same as sync_base)
 
-**`src/paths.rs`**
-- No changes needed — already uses `config.sync_base` and `config.lang_dir`
+**Changes to `load()`:**
+```
+FORGE_CONFIG_DIR env var → <config_dir>/config (JSON file)
+Symlink followed automatically by Rust's PathBuf → canonical paths resolved
+If env var absent → error with message pointing to the missing `FORGE_CONFIG_DIR`
+If config file missing → error with message
+```
+No fallback to hardcoded `~/.forge` — module is authoritative
 
-### Module side
-
-**`module/default.nix`**
-- Remove `all-languages` inline definition (8 hardcoded language blocks)
-- Add a `languages.data` file in the repo root that the module reads to get language definitions
-  - Format: TOML or JSON — `[rust]`, `[python]`, etc. with their fields
-  - Module reads this data file at eval time to generate language files
-  - This becomes the single source of truth for both HM module generation AND runtime discovery
-- Remove `all-includes` inline definition — same treatment
-- HM module generates `~/.forge/config` (structured file) at build time
-  - HM module only passes one env var to session: `FORGE_CONFIG` pointing to that file
-  - Remove ALL other `FORGE_*` env vars from `home.sessionVariables`
-- Config file written by module: `$HOME/.forge/config` (not to Nix store — use `home.file`)
-
-### Config format
+**JSON config format (written to `$FORGE_CONFIG_DIR/config` by HM):**
 ```json
 {
-  "github_user": "AMarek05",
   "sync_base": "/home/user/sync",
   "editor": "/run/current-system/sw/bin/nvim",
-  "tmux_binary": "/run/current-system/sw/bin/tmux",
-  "lang_dir": "/nix/store/...-forge-languages",
-  "include_dir": "/nix/store/...-forge-includes"
+  "tmux_bin": "/run/current-system/sw/bin/tmux",
+  "github_user": "AMarek05",
+  "lang_dir": "/nix/store/<hash>-forge-languages",
+  "include_dir": "/nix/store/<hash>-forge-includes"
 }
 ```
+Naming: `tmux_bin` over `tmux_binary` to avoid "binary" being a config schema concern
+Naming: no underscore in `tmux_bin` — short, consistent with `github_user`
+Naming: `sync_base` matches HM module's option name exactly
 
-### `nix/package.nix`
-- No changes needed — already ships `languages/` and `includes/` to store, binary discovers from `lang_dir` at runtime
+### 1.2 — Module: write structured config, set one env var
+
+**`module/default.nix`** changes:
+1. Write `home.file.".forge/config"`.source = some store path — config written by module
+2. Write it as a symlink to a generated store path:
+   ```nix
+   home.file.".forge/config" = {
+     source = pkgs.runCommandNoCCM "forge-config" {
+       content = builtins.toJSON {
+         sync_base   = cfg.syncBase;
+         editor      = cfg.editor;
+         tmux_bin    = cfg.tmuxBinary;
+         github_user = cfg.githubUser;
+         lang_dir    = cfg.lang_dir;
+         include_dir = cfg.include_dir;
+       };
+       passAsFile   = [ "content" ];
+     } /share/forge/config;
+   }
+   ```
+   Actually simpler: `home.file.".forge/config" = { text = builtins.toJSON { ... }; };` — HM writes file directly to host, no symlink needed. File owner is module. Binary reads it.
+
+3. Remove ALL `home.sessionVariables` forge env vars — replace with:
+   ```nix
+   home.sessionVariables.FORGE_CONFIG_DIR = "${config.home.homeDirectory}/.forge";
+   ```
+4. Keep `home.file."${compDir}/_forge"` for zsh completion
+
+### 1.3 — Binary: remove `src/config.rs` env var parsing
+Remove from `config.rs`:
+- Regex for `export VAR="..."` pattern
+- `parse()` function
+- `unwrap_or()` fallback patterns for fields
+- `path_override`
+- `base` field
+- `default_remote_base`
+Add:
+- `serde` for JSON parsing
+- `load_from_path(config_dir: &Path) -> Result<Self> that reads `<config_dir>/config` and parses with serde
+
+### 1.4 — Binary: `src/cli.rs` changes  
+No `--config-dir` flag. No `--config` flag. `load()` reads from `FORGE_CONFIG_DIR` only. CLI args unchanged.
+
+### 1.5 — Binary: `src/paths.rs`
+- `resolve_project_path` — no change needed, uses `config.sync_base`
+- New helper: `ForgeConfig::index_path()` returns `<config_dir>/index.json`
+- New helper: `ForgeConfig::state_dir()` returns `<config_dir>/state/`
+- New helper: `ForgeConfig::config_dir()` returns `FORGE_CONFIG_DIR` resolved path
+
+### 1.6 — Binary: update callers of `ForgeConfig::load()` and field accesses
+```
+src/lib.rs               — no change
+src/commands/check.rs    — uses config.lang_dir, config.include_dir — no field names change
+src/commands/create.rs   — uses config.base, config.sync_base, config.editor, config.tmux_binary
+                            → derive base from config_dir, remove config.base uses
+src/commands/overseer.rs — uses config.include_dir
+src/commands/lang.rs    — uses config.lang_dir, config.editor, config.sync_base
+src/commands/list.rs    — uses config.base
+src/commands/edit.rs    — uses config.editor
+src/commands/remove.rs  — uses config.base  
+src/commands/sync.rs   — uses config.sync_base, config.base, config.lang_dir, config.include_dir
+src/commands/session.rs — uses config.sync_base
+src/commands/cd.rs      — uses config.sync_base
+src/commands/pick.rs    — uses config.editor, config.sync_base
+src/commands/health.rs  — uses config.base
+```
+No command changes beyond swapping `config.base` usage for `config_dir()/index_path()` etc.
 
 ---
 
-## Phase 2 — Binary Reads Config, No Hardcoded Defaults
+## Phase 2 — Languages and includes auto-generated
+**Languages and includes discovered from structured JSON files in config dir, not from hardcoded inline Nix. Updated at build time by module, optionally via `forge sync --langs --includes` that re-runs generation.
+  
+### 2.1 — Module: languages.toml / includes.toml replaced by structured JSON files
 
-**`src/config.rs`**
-- `load()` reads from `$FORGE_CONFIG` env var if set, else `~/.forge/config`
-- If config file missing: return error with helpful message — no fallback to hardcoded defaults
-- Remove `unwrap_or_default()` fallbacks — config must be complete
+Module generates at build time:
+```
+~/.forge/languages.json   — [{name, desc, path, direnv, build, run, test, check, buildInputs}, ...]
+~/.forge/includes.json   — [{name, desc, provides}, ...]
+```
+
+These are store paths symlinked by HM at build time. Immutable at runtime — to update, rebuild with module changes or run `forge sync --langs --includes` which triggers module's generation logic at runtime. How? Either:
+- a) `forge sync --langs` triggers a nix derivation rebuild (not great for UX)
+- b) `forge sync --langs` re-generates from the data file directly in the binary (reads from repo's source `languages/` directory at runtime)
+- c) `forge sync --langs` re-generates from the Nix module's output (store path accessible at runtime via `lang_dir` path)
+  
+User clarification needed: does `forge sync --langs` need to trigger a nix rebuild? If not, option (b) — binary re-generates from repo source at runtime — seems cleanest.
+
+### 2.2 — Binary: `src/wl_parser.rs` — remove hardcoded Language struct defaults
+Current `Language` struct has defaults baked in for missing fields. Phase 1 config already removes `setup_priority` from `WlFile`, but `Language` still had `setup_priority`, `overseer_template`, `setup` — already removed per prior work. Check that binary doesn't assume any hardcoded language list exists anywhere. `src/commands/lang.rs` should read from `config.lang_dir` and parse `lang.wl` from each directory.
 
 ---
 
-## Phase 3 — Remove Hardcoded Language List from Module
-
-**`languages/` → `languages.toml` (new data file)**
-```toml
-[rust]
-description = "Rust project with cargo"
-path = "Code/Rust"
-direnv = "use flake"
-buildInputs = ["rustc", "cargo", "rustfmt", "clippy"]
-
-[python]
-description = "Python project with poetry"
-path = "Code/Python"
-direnv = "use flake"
-buildInputs = ["python311", "poetry"]
-...
+## Files to change (Phase 1 only)
 ```
-
-**`module/default.nix`**
-- `builtins.fromTOML` (or fromJSON) to read `languages.toml` at module eval time
-- Remove inline `rust-lang`, `python-lang`, etc. block definitions
-- Remove inline `all-languages` attribute set
-- Generate language files from the data file, no hardcoded attrs
-- Remove `setup_priority` from generated `lang.wl` (already removed from `WlFile` earlier)
-- Same treatment for `includes/` → `includes.toml`
-
----
-
-## Phase 4 — Remove Hardcoded Language Discovery from Binary
-
-**`src/commands/lang.rs`**
-- Discover languages from `config.lang_dir` at runtime (already the case)
-- No hardcoded list in binary
-- `forge lang list` lists files in `lang_dir`, parses each `lang.wl`
-- `forge lang rust` resolves from `lang_dir/rust/lang.wl`
-
----
-
-## Files to change
-```
-src/config.rs          — parse JSON/TOML config, --config flag, remove config.sh reading
-src/cli.rs             — add --config flag
-module/default.nix     — read languages.toml/includes.toml, write config file, drop hardcoded lists
-languages.toml         — NEW — structured language data (single source of truth)
-includes.toml          — NEW — structured include data
-TODO.md                — this file, update after each phase
-```
-
-## Files to delete
-```
-src/config.rs.old      — (if we keep a backup, no — just replace)
-~/.forge/config.sh     — removed from runtime, replaced by config file written by HM
-```
-
-## Files to change (devel)
-```
-devel/flake.nix        — if it has hardcoded paths that need config_dir parameter
+src/config.rs          — remove regex/shell parsing, add serde JSON parsing, use FORGE_CONFIG_DIR env var
+src/cli.rs             — no changes needed (no flag added in final design)
+src/paths.rs           — add helper methods: config_dir(), index_path(), state_dir()
+src/commands/check.rs  — no field name changes
+src/commands/create.rs  — remove config.base usage, derive from config_dir()  
+src/commands/overseer.rs — no field name changes
+src/commands/lang.rs   — no field name changes
+src/commands/list.rs   — swap config.base → config_dir() + index.json  
+src/commands/edit.rs   — no field name changes
+src/commands/remove.rs — swap config.base → config_dir() + index.json
+src/commands/sync.rs   — swap config.base → config_dir() + index.json
+src/commands/session.rs — no field name changes  
+src/commands/cd.rs     — no field name changes
+src/commands/pick.rs  — no field name changes
+src/commands/health.rs — swap config.base → config_dir() + index.json
+module/default.nix     — write JSON config to ~/.forge/config, set FORGE_CONFIG_DIR, remove FORGE_* sessionVariables
+Cargo.toml             — add serde, serde_json for JSON config parsing
 ```
