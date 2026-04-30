@@ -107,6 +107,11 @@ fn parse_fields(content: &str, path: &Path) -> Result<HashMap<String, String>> {
                 raw_value.to_string()
             } else {
                 // Quoted string — strip quotes
+                let trimmed = raw_value.trim();
+                if !(trimmed.starts_with('"') && trimmed.ends_with('"')
+                    || trimmed.starts_with('\'') && trimmed.ends_with('\'')) {
+                    anyhow::bail!("string value must be quoted: {}", raw_value);
+                }
                 strip_quotes(raw_value)
             };
 

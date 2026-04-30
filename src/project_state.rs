@@ -136,7 +136,7 @@ fn parse_state_file(content: &str) -> Result<ProjectState> {
                 "run" => state.run = strip_quotes(value),
                 "test" => state.test = strip_quotes(value),
                 "check" => state.check = strip_quotes(value),
-                "last_wl_mtime" => state.last_wl_mtime = value.parse().unwrap_or(0),
+                "last_wl_mtime" => state.last_wl_mtime = strip_quotes(value).parse().unwrap_or(0),
                 _ => {}
             }
         }
