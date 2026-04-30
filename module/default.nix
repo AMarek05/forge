@@ -303,29 +303,34 @@ let
 
   # ─── Config file generation ──────────────────────────────────────────────────
 
+  # Hardcoded default languages — always included from repo
+  default-languages = lib.attrNames all-languages;
+  default-includes  = lib.attrNames all-includes;
+
+  # ─── Lang dir: default/ (HM-managed store) + custom/ (HM-managed, user-editable) ───
   lang-dir  = pkgs.runCommand "forge-languages" {
     preferLocalBuild = true;
     allowSubstitutes = false;
   } ''
-    mkdir -p $out
+    mkdir -p $out/default $out/custom
     ${lib.concatMapStrings (lang: ''
-      mkdir -p $out/${lang}
-      cp ${lang-files.${lang}.flake_nix} $out/${lang}/flake.nix
-      cp ${lang-files.${lang}.setup_sh}  $out/${lang}/setup.sh
-      cp ${lang-files.${lang}.lang_wl}   $out/${lang}/lang.wl
-    '') cfg.languages}
+      mkdir -p $out/default/${lang}
+      cp ${lang-files.${lang}.flake_nix} $out/default/${lang}/flake.nix
+      cp ${lang-files.${lang}.setup_sh}  $out/default/${lang}/setup.sh
+      cp ${lang-files.${lang}.lang_wl}   $out/default/${lang}/lang.wl
+    '') default-languages}
   '';
 
   include-dir = pkgs.runCommand "forge-includes" {
     preferLocalBuild = true;
     allowSubstitutes = false;
   } ''
-    mkdir -p $out
+    mkdir -p $out/default $out/custom
     ${lib.concatMapStrings (inc: ''
-      mkdir -p $out/${inc}
-      cp ${include-files.${inc}.include_wl} $out/${inc}/include.wl
-      cp ${include-files.${inc}.setup_sh}   $out/${inc}/setup.sh
-    '') cfg.includes}
+      mkdir -p $out/default/${inc}
+      cp ${include-files.${inc}.include_wl} $out/default/${inc}/include.wl
+      cp ${include-files.${inc}.setup_sh}   $out/default/${inc}/setup.sh
+    '') default-includes}
   '';
 
   # ─── Langs catalog JSON ───────────────────────────────────────────────────────
@@ -449,14 +454,13 @@ in
       include_dir = "${cfg.configDir}/includes";
     };
 
-    # langs.json and includes.json — catalogs for forge sync
-    home.file."${cfg.configDir}/langs.json".text     = langs-catalog-json;
-    home.file."${cfg.configDir}/includes.json".text   = includes-catalog-json;
+    home.file."${cfg.configDir}/langs/default".source  = lang-dir;
+    home.file."${cfg.configDir}/includes/default".source = include-dir;
 
-    # Symlink langs/default -> store path (HM-controlled, recreated on each rebuild)
-    # Symlink includes/default -> store path
-    home.file."${cfg.configDir}/langs/default".source     = lang-dir;
-    home.file."${cfg.configDir}/includes/default".source  = include-dir;
+    # Set env var at activation time via wrapper script that forges calls
+    home.file."${cfg.configDir}/forge.env" = {
+      text = "FORGE_CONFIG_DIR=${cfg.configDir}";
+    };
 
     home.sessionVariables = {
       FORGE_CONFIG_DIR = cfg.configDir;
