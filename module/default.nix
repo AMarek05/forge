@@ -293,8 +293,8 @@ let
   }) all-languages;
 
   include-files = builtins.mapAttrs (name: inc: {
-    "include.wl" = generate-include-includewl name inc;
-    "setup.sh" = generate-include-setup name inc;
+    include_wl = generate-include-includewl name inc;
+    setup_sh  = generate-include-setup name inc;
   }) all-includes;
 
   zsh-completion = builtins.replaceStrings [ "@JQ@" ] [ "${pkgs.jq}/bin/jq" ] (
@@ -323,8 +323,8 @@ let
     mkdir -p $out
     ${lib.concatMapStrings (inc: ''
       mkdir -p $out/${inc}
-      cp ''${include-files.${inc}."include.wl"} $out/${inc}/include.wl
-      cp ''${include-files.${inc}."setup.sh"}   $out/${inc}/setup.sh
+      cp ''${include-files.${inc}.include_wl} $out/${inc}/include.wl
+      cp ''${include-files.${inc}.setup_sh}   $out/${inc}/setup.sh
     '') cfg.includes}
   '';
 
