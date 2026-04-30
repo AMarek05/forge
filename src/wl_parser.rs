@@ -133,18 +133,38 @@ pub fn parse_json_array(s: &str) -> Vec<String> {
     if !s.starts_with('[') || !s.ends_with(']') {
         return vec![];
     }
+    if !is_bracket_balanced(s) {
+        return vec![];
+    }
 
     let inner = &s[1..s.len() - 1].trim();
     if inner.is_empty() {
         return vec![];
     }
-
     let mut result = vec![];
     for part in inner.split(',') {
         let part = part.trim();
         result.push(strip_quotes(part));
     }
     result
+}
+
+
+fn is_bracket_balanced(s: &str) -> bool {
+    let mut depth = 0;
+    let mut in_string = false;
+    for c in s.chars() {
+        match c {
+            '"' => in_string = !in_string,
+            '[' if !in_string => depth += 1,
+            ']' if !in_string => {
+                if depth == 0 { return false; }
+                depth -= 1;
+            }
+            _ => {}
+        }
+    }
+    !in_string && depth == 0
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
