@@ -303,18 +303,14 @@ let
 
   # ─── Config file generation ──────────────────────────────────────────────────
 
-  config-json = pkgs.writeTextFile {
-    name = "forge-config.json";
-    destination = "/config.json";
-    text = builtins.toJSON {
-      sync_base   = cfg.syncBase;
-      editor      = cfg.editor;
-      tmux_bin    = cfg.tmuxBinary;
-      github_user = cfg.githubUser;
-      lang_dir    = lang-dir;
-      include_dir = include-dir;
-    };
-  };
+  config-json = pkgs.writeText "forge-config.json" (builtins.toJSON {
+    sync_base   = cfg.syncBase;
+    editor      = cfg.editor;
+    tmux_bin    = cfg.tmuxBinary;
+    github_user = cfg.githubUser;
+    lang_dir    = lang-dir;
+    include_dir  = include-dir;
+  });
 
   lang-dir = pkgs.runCommand "forge-languages" {
     preferLocalBuild = true;
