@@ -104,11 +104,11 @@ in
     home.file."${cfg.configDir}/langs/custom".source      = pkgs.runCommand "forge-langs-custom" {} "mkdir -p $out";
     home.file."${cfg.configDir}/includes/custom".source   = pkgs.runCommand "forge-includes-custom" {} "mkdir -p $out";
 
-    home.activationScripts.forge-init = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    home.activation = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       # Pre-populate langs.json and includes.json at activation time
       export FORGE_CONFIG_DIR="${cfg.configDir}"
-      ${lib.getExe cfg.package} sync --langs
-      ${lib.getExe cfg.package} sync --includes
+      ${lib.getExe' cfg.package "forge"} sync --langs
+      ${lib.getExe' cfg.package "forge"} sync --includes
     '';
 
     home.sessionVariables = {
