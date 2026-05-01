@@ -270,11 +270,12 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         .unwrap_or("");
 
     let lang_name = &lang.name;
-    // lang_dir for FORGE_LANG_DIR env var
+    // lang_dir for FORGE_LANG_DIR env var — parent of lang dir (e.g. ~/.forge/langs/default)
+    // so module can use $FORGE_LANG_DIR/${lang_name}/flake.nix
     let lang_dir = if let Some(ref flake) = lang.flake {
-        PathBuf::from(flake).parent().unwrap().to_path_buf()
+        PathBuf::from(flake).parent().unwrap().parent().unwrap().to_path_buf()
     } else {
-        config.lang_dir.join(&lang.name)
+        config.lang_default_dir()
     };
 
     let env_vars: [(&str, &str); 8] = [
