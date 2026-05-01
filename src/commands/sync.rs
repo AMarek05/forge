@@ -57,6 +57,7 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
         for entry in fs::read_dir(&base)? {
             let entry = entry?;
             let lang_path = entry.path();
+            eprintln!("DEBUG:   entry name={} is_dir={}", lang_path.display(), lang_path.is_dir());
             if !lang_path.is_dir() {
                 continue;
             }
