@@ -7,10 +7,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
 
-use crate::verify_and_diff::verify_and_diff;
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
-use crate::wl_parser::{parse_wl, parse_json_array, parse_lang_wl};
+use crate::verify_and_diff::verify_and_diff;
+use crate::wl_parser::parse_wl;
 
 /// Entry point — called from main.rs with parsed sync flags.
 pub fn run(flags: &SyncFlags) -> Result<()> {
@@ -39,43 +39,36 @@ pub struct SyncFlags {
 // ─── sync --langs ────────────────────────────────────────────────────────────
 
 fn sync_langs(config: &ForgeConfig) -> Result<()> {
-    let langs_dir = &config.lang_dir;
     let output_path = config.config_dir().join("langs.json");
-
-    eprintln!("DEBUG sync_langs: lang_dir={}", langs_dir.display());
 
     let mut entries = vec![];
 
     // Scan default/ and custom/ subdirs
-    for subdir in ["default", "custom"] {
-        let base = langs_dir.join(subdir);
-        eprintln!("DEBUG: checking base={}", base.display());
+    for base in [config.lang_default_dir(), config.lang_custom_dir()] {
         if !base.exists() {
-            eprintln!("DEBUG: {} does not exist, skipping", base.display());
             continue;
         }
         for entry in fs::read_dir(&base)? {
             let entry = entry?;
             let lang_path = entry.path();
-            eprintln!("DEBUG:   entry path={}", lang_path.display());
             if !lang_path.is_dir() {
                 continue;
             }
             let wl_path = lang_path.join("lang.wl");
-            eprintln!("DEBUG:   wl_path={} exists={}", wl_path.display(), wl_path.exists());
             if !wl_path.exists() {
                 continue;
             }
-            match parse_wl(&wl_path) {
-                Ok(wl) => {
-                    let name = wl.name.unwrap_or_else(|| {
+            // Single parse — parse_lang_wl returns full metadata
+            match crate::wl_parser::parse_lang_wl(&wl_path) {
+                Ok(lang_meta) => {
+                    let name = if !lang_meta.name.is_empty() {
+                        lang_meta.name.clone()
+                    } else {
                         lang_path.file_name()
                             .and_then(|n| n.to_str())
                             .unwrap_or("unknown")
                             .to_string()
-                    });
-                    // Use parse_lang_wl to get full lang metadata (includes path, direnv)
-                    let lang_meta = parse_lang_wl(&wl_path)?;
+                    };
                     entries.push(serde_json::json!({
                         "name": name,
                         "description": lang_meta.desc,
@@ -110,13 +103,11 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
 // ─── sync --includes ────────────────────────────────────────────────────────
 
 fn sync_includes(config: &ForgeConfig) -> Result<()> {
-    let includes_dir = &config.include_dir;
     let output_path = config.config_dir().join("includes.json");
 
     let mut entries = vec![];
 
-    for subdir in ["default", "custom"] {
-        let base = includes_dir.join(subdir);
+    for base in [config.include_default_dir(), config.include_custom_dir()] {
         if !base.exists() {
             continue;
         }
@@ -129,14 +120,29 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
             let include_wl_path = inc_path.join("include.wl");
             let setup_sh_path = inc_path.join("setup.sh");
 
-            // Parse include.wl for description and provides
+            // Parse include.wl using wl_parser helpers
             let (description, provides) = if include_wl_path.exists() {
                 let content = fs::read_to_string(&include_wl_path)?;
-                let desc = extract_field(&content, "description");
-                // provides is a JSON array in the file, parse it
-                let provides_raw = extract_field(&content, "provides").unwrap_or_default();
-                let provides: Vec<String> = parse_json_array(&provides_raw);
-                (desc.unwrap_or_default(), provides)
+                let key_re = regex::Regex::new(r#"^([a-z_]+)\s*=\s*(.+)$"#).unwrap();
+                let mut desc = String::new();
+                let mut provides_raw = String::new();
+                for line in content.lines() {
+                    let line = line.trim();
+                    if line.is_empty() || line.starts_with('#') {
+                        continue;
+                    }
+                    if let Some(caps) = key_re.captures(line) {
+                        let key = caps.get(1).unwrap().as_str();
+                        let raw_val = caps.get(2).unwrap().as_str();
+                        match key {
+                            "description" => desc = crate::wl_parser::strip_quotes(raw_val),
+                            "provides" => provides_raw = raw_val.to_string(),
+                            _ => {}
+                        }
+                    }
+                }
+                let provides: Vec<String> = crate::wl_parser::parse_json_array(&provides_raw);
+                (desc, provides)
             } else {
                 (String::new(), Vec::new())
             };
@@ -259,22 +265,6 @@ fn walk_dir(dir: &Path, results: &mut Vec<(String, String, String, Vec<String>)>
         }
     }
     Ok(())
-}
-
-fn extract_field(content: &str, field: &str) -> Option<String> {
-    for line in content.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        if let Some(rest) = line.strip_prefix(&format!("{}=", field)) {
-            let val = rest.trim();
-            if (val.starts_with('"') && val.ends_with('"')) || (val.starts_with('\'') && val.ends_with('\'')) {
-                return Some(val[1..val.len()-1].to_string());
-            }
-        }
-    }
-    None
 }
 
 fn now_iso() -> String {

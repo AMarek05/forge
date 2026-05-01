@@ -274,8 +274,8 @@ pub fn run_all() -> Result<()> {
     let config = ForgeConfig::load()?;
     let index = crate::index::load_index()?;
 
-    let lang_dir = Some(&config.lang_dir).map(|v| &**v);
-    let include_dir = Some(&config.include_dir).map(|v| &**v);
+    let lang_dir = Some(&*config.lang_default_dir());
+    let include_dir = Some(&*config.include_default_dir());
 
     let mut had_error = false;
 
@@ -310,8 +310,8 @@ pub fn run_one(name: &str) -> Result<()> {
         .find(|p| p.name == name)
         .with_context(|| format!("project \"{}\" not found in index", name))?;
 
-    let lang_dir = Some(&config.lang_dir).map(|v| &**v);
-    let include_dir = Some(&config.include_dir).map(|v| &**v);
+    let lang_dir = Some(&*config.lang_default_dir());
+    let include_dir = Some(&*config.include_default_dir());
     let wl_path = project.path.join(".wl");
 
     let result = check_wl(&wl_path, lang_dir, include_dir)?;

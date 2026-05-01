@@ -86,9 +86,20 @@ pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Opt
 }
 
 fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
-    let lang_path = config.lang_dir.join(lang_name).join("lang.wl");
-    parse_lang_wl(&lang_path)
-        .with_context(|| format!("language '{}' not found in registry", lang_name))
+    // Try default/ first (HM-controlled, symlink to Nix store),
+    // then custom/ (user-created languages).
+    for base in [config.lang_default_dir(), config.lang_custom_dir()] {
+        let lang_path = base.join(lang_name).join("lang.wl");
+        if lang_path.exists() {
+            return parse_lang_wl(&lang_path)
+                .with_context(|| format!("language '{}' not found in registry", lang_name));
+        }
+    }
+    anyhow::bail!(
+        "language '{}' not found in registry (checked default/ and custom/ under {})",
+        lang_name,
+        config.lang_dir.display()
+    )
 }
 
 fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {

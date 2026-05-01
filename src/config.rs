@@ -86,4 +86,24 @@ impl ForgeConfig {
     pub fn projects_dir(&self) -> PathBuf {
         self.sync_base.clone()
     }
+
+    /// Path to the default languages directory (symlink to Nix store)
+    pub fn lang_default_dir(&self) -> PathBuf {
+        self.lang_dir.join("default")
+    }
+
+    /// Path to the custom languages directory (user-created)
+    pub fn lang_custom_dir(&self) -> PathBuf {
+        self.lang_dir.join("custom")
+    }
+
+    /// Path to the default includes directory (symlink to Nix store)
+    pub fn include_default_dir(&self) -> PathBuf {
+        self.include_dir.join("default")
+    }
+
+    /// Path to the custom includes directory (user-created)
+    pub fn include_custom_dir(&self) -> PathBuf {
+        self.include_dir.join("custom")
+    }
 }
