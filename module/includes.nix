@@ -39,11 +39,11 @@ let
     preferLocalBuild = true;
     allowSubstitutes = false;
   } ''
-    mkdir -p $out/default $out/custom
+    mkdir -p $out
     ${lib.concatMapStrings (inc: ''
-      mkdir -p $out/default/${inc}
-      cp ${include-files.${inc}.include_wl} $out/default/${inc}/include.wl
-      cp ${include-files.${inc}.setup_sh}   $out/default/${inc}/setup.sh
+      mkdir -p $out/${inc}
+      cp ${include-files.${inc}.include_wl} $out/${inc}/include.wl
+      cp ${include-files.${inc}.setup_sh}   $out/${inc}/setup.sh
     '') default-includes}
   '';
 in

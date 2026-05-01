@@ -106,12 +106,12 @@ let
     preferLocalBuild = true;
     allowSubstitutes = false;
   } ''
-    mkdir -p $out/default $out/custom
+    mkdir -p $out
     ${lib.concatMapStrings (lang: ''
-      mkdir -p $out/default/${lang}
-      cp ${lang-files.${lang}.flake_nix} $out/default/${lang}/flake.nix
-      cp ${lang-files.${lang}.setup_sh}  $out/default/${lang}/setup.sh
-      cp ${lang-files.${lang}.lang_wl}   $out/default/${lang}/lang.wl
+      mkdir -p $out/${lang}
+      cp ${lang-files.${lang}.flake_nix} $out/${lang}/flake.nix
+      cp ${lang-files.${lang}.setup_sh}  $out/${lang}/setup.sh
+      cp ${lang-files.${lang}.lang_wl}   $out/${lang}/lang.wl
     '') default-languages}
   '';
 in
