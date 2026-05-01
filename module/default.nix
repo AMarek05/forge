@@ -94,14 +94,11 @@ in
     home.file."${cfg.configDir}/langs/default".source     = langs.lang-dir;
     home.file."${cfg.configDir}/includes/default".source = incs.include-dir;
 
-    # custom/ dirs — empty placeholders for user-added langs/includes
-    # forge sync --langs and --includes scan default/ + custom/ and write the JSONs
-    home.file."${cfg.configDir}/langs/custom".source      = pkgs.runCommand "forge-langs-custom" {} "mkdir -p $out";
-    home.file."${cfg.configDir}/includes/custom".source   = pkgs.runCommand "forge-includes-custom" {} "mkdir -p $out";
-
     home.activation = {
-      runForgeSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      runForgeSync = lib.hm.dag.entryAfter ["writeBoundary"] ''
         export FORGE_CONFIG_DIR="${cfg.configDir}"
+        mkdir -p "${cfg.configDir}/langs/custom"
+        mkdir -p "${cfg.configDir}/includes/custom"
         ${lib.getExe' cfg.package "forge"} sync --langs
         ${lib.getExe' cfg.package "forge"} sync --includes
       '';
