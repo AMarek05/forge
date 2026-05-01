@@ -24,18 +24,6 @@ let
     builtins.readFile ./completion.zsh
   );
 
-  # Config file as store symlink
-  config-json-file = builtins.toFile "config.json" (
-    builtins.toJSON {
-      sync_base   = cfg.syncBase;
-      editor      = cfg.editor;
-      tmux_bin    = cfg.tmuxBinary;
-      github_user = cfg.githubUser;
-      lang_dir    = "${cfg.configDir}/langs";
-      include_dir = "${cfg.configDir}/includes";
-    }
-  );
-
 in
 
 {
@@ -92,8 +80,15 @@ in
       '';
     };
 
-    # config.json as store symlink
-    home.file."${cfg.configDir}/config.json".source = config-json-file;
+    # config.json as plain text (HM writes it directly)
+    home.file."${cfg.configDir}/config.json".text = builtins.toJSON {
+      sync_base   = cfg.syncBase;
+      editor      = cfg.editor;
+      tmux_bin    = cfg.tmuxBinary;
+      github_user = cfg.githubUser;
+      lang_dir    = "${cfg.configDir}/langs";
+      include_dir = "${cfg.configDir}/includes";
+    };
 
     # langs/default and includes/default — store dirs with language/include files
     home.file."${cfg.configDir}/langs/default".source     = langs.lang-dir;
