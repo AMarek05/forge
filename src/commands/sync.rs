@@ -42,12 +42,16 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
     let langs_dir = &config.lang_dir;
     let output_path = config.config_dir().join("langs.json");
 
+    eprintln!("DEBUG sync_langs: lang_dir={}", langs_dir.display());
+
     let mut entries = vec![];
 
     // Scan default/ and custom/ subdirs
     for subdir in ["default", "custom"] {
         let base = langs_dir.join(subdir);
+        eprintln!("DEBUG: checking base={}", base.display());
         if !base.exists() {
+            eprintln!("DEBUG: {} does not exist, skipping", base.display());
             continue;
         }
         for entry in fs::read_dir(&base)? {
