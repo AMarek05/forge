@@ -57,11 +57,12 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
         for entry in fs::read_dir(&base)? {
             let entry = entry?;
             let lang_path = entry.path();
-            eprintln!("DEBUG:   entry name={} is_dir={}", lang_path.display(), lang_path.is_dir());
+            eprintln!("DEBUG:   entry path={}", lang_path.display());
             if !lang_path.is_dir() {
                 continue;
             }
             let wl_path = lang_path.join("lang.wl");
+            eprintln!("DEBUG:   wl_path={} exists={}", wl_path.display(), wl_path.exists());
             if !wl_path.exists() {
                 continue;
             }
@@ -266,19 +267,10 @@ fn extract_field(content: &str, field: &str) -> Option<String> {
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        if let Some(eq) = line.find('=') {
-            let key = line[..eq].trim();
-            if key == field {
-                let val = line[eq + 1..].trim();
-                // Strip quotes
-                let val = if (val.starts_with('"') && val.ends_with('"'))
-                    || (val.starts_with('\'') && val.ends_with('\''))
-                {
-                    &val[1..val.len() - 1]
-                } else {
-                    val
-                };
-                return Some(val.to_string());
+        if let Some(rest) = line.strip_prefix(&format!("{}=", field)) {
+            let val = rest.trim();
+            if (val.starts_with('"') && val.ends_with('"')) || (val.starts_with('\'') && val.ends_with('\'')) {
+                return Some(val[1..val.len()-1].to_string());
             }
         }
     }
