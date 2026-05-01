@@ -109,9 +109,9 @@ let
     mkdir -p $out/default $out/custom
     ${lib.concatMapStrings (lang: ''
       mkdir -p $out/default/${lang}
-      cp ''${lang-files.${lang}.flake_nix} $out/default/${lang}/flake.nix
-      cp ''${lang-files.${lang}.setup_sh}  $out/default/${lang}/setup.sh
-      cp ''${lang-files.${lang}.lang_wl}   $out/default/${lang}/lang.wl
+      cp ${lang-files.${lang}.flake_nix} $out/default/${lang}/flake.nix
+      cp ${lang-files.${lang}.setup_sh}  $out/default/${lang}/setup.sh
+      cp ${lang-files.${lang}.lang_wl}   $out/default/${lang}/lang.wl
     '') default-languages}
   '';
 in

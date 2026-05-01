@@ -42,8 +42,8 @@ let
     mkdir -p $out/default $out/custom
     ${lib.concatMapStrings (inc: ''
       mkdir -p $out/default/${inc}
-      cp ''${include-files.${inc}.include_wl} $out/default/${inc}/include.wl
-      cp ''${include-files.${inc}.setup_sh}   $out/default/${inc}/setup.sh
+      cp ${include-files.${inc}.include_wl} $out/default/${inc}/include.wl
+      cp ${include-files.${inc}.setup_sh}   $out/default/${inc}/setup.sh
     '') default-includes}
   '';
 in
