@@ -104,11 +104,13 @@ in
     home.file."${cfg.configDir}/langs/custom".source      = pkgs.runCommand "forge-langs-custom" {} "mkdir -p $out";
     home.file."${cfg.configDir}/includes/custom".source   = pkgs.runCommand "forge-includes-custom" {} "mkdir -p $out";
 
-    home.activation = lib.mkAfter ''
-      export FORGE_CONFIG_DIR="${cfg.configDir}"
-      ${lib.getExe' cfg.package "forge"} sync --langs
-      ${lib.getExe' cfg.package "forge"} sync --includes
-    '';
+    home.activation = {
+      runForgeSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        export FORGE_CONFIG_DIR="${cfg.configDir}"
+        ${lib.getExe' cfg.package "forge"} sync --langs
+        ${lib.getExe' cfg.package "forge"} sync --includes
+      '';
+    };
 
     home.sessionVariables = {
       FORGE_CONFIG_DIR = cfg.configDir;
