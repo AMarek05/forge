@@ -72,6 +72,7 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
                     entries.push(serde_json::json!({
                         "name": name,
                         "description": lang_meta.desc,
+                        "flake": lang_path.join("flake.nix").to_string_lossy().to_string(),
                         "lang_wl": {
                             "name": lang_meta.name,
                             "desc": lang_meta.desc,

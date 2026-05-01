@@ -91,8 +91,13 @@ fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
     for base in [config.lang_default_dir(), config.lang_custom_dir()] {
         let lang_path = base.join(lang_name).join("lang.wl");
         if lang_path.exists() {
-            return parse_lang_wl(&lang_path)
-                .with_context(|| format!("language '{}' not found in registry", lang_name));
+            let mut lang = parse_lang_wl(&lang_path)
+                .with_context(|| format!("language '{}' not found in registry", lang_name))?;
+            // Enrich with flake path from langs.json if available
+            if let Ok(Some(flake)) = get_flake_from_langs_json(lang_name, config) {
+                lang.flake = Some(flake);
+            }
+            return Ok(lang);
         }
     }
     anyhow::bail!(
@@ -100,6 +105,54 @@ fn load_language(lang_name: &str, config: &ForgeConfig) -> Result<Language> {
         lang_name,
         config.lang_dir.display()
     )
+}
+
+/// Load langs.json and return the flake path for a given language name.
+fn get_flake_from_langs_json(lang_name: &str, config: &ForgeConfig) -> Result<Option<String>> {
+    let langs_path = config.config_dir().join("langs.json");
+    if !langs_path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&langs_path)
+        .context("failed to read langs.json")?;
+    let entries: Vec<serde_json::Value> = serde_json::from_str(&content)
+        .context("failed to parse langs.json")?;
+    for entry in entries {
+        if entry.get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s == lang_name)
+            .unwrap_or(false)
+        {
+            if let Some(flake) = entry.get("flake").and_then(|v| v.as_str()) {
+                return Ok(Some(flake.to_string()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// Load includes.json and return the setup_sh for a given include name.
+fn get_setup_sh_from_includes_json(inc_name: &str, config: &ForgeConfig) -> Result<Option<String>> {
+    let includes_path = config.config_dir().join("includes.json");
+    if !includes_path.exists() {
+        return Ok(None);
+    }
+    let content = std::fs::read_to_string(&includes_path)
+        .context("failed to read includes.json")?;
+    let entries: Vec<serde_json::Value> = serde_json::from_str(&content)
+        .context("failed to parse includes.json")?;
+    for entry in entries {
+        if entry.get("name")
+            .and_then(|v| v.as_str())
+            .map(|s| s == inc_name)
+            .unwrap_or(false)
+        {
+            if let Some(setup_sh) = entry.get("setup_sh").and_then(|v| v.as_str()) {
+                return Ok(Some(setup_sh.to_string()));
+            }
+        }
+    }
+    Ok(None)
 }
 
 fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {
@@ -193,8 +246,21 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         return Ok(());
     }
 
-    let lang_dir = &config.lang_dir;
-    let setup_sh = lang_dir.join(&lang.name).join("setup.sh");
+    // Use the flake path from langs.json — it points directly to the store
+    // e.g. ~/.forge/langs/default/rust/flake.nix
+    let setup_sh = if let Some(ref flake) = lang.flake {
+        let lang_dir = PathBuf::from(flake).parent().unwrap().to_path_buf();
+        lang_dir.join("setup.sh")
+    } else {
+        // Fallback: scan default/ then custom/
+        for base in [config.lang_default_dir(), config.lang_custom_dir()] {
+            let candidate = base.join(&lang.name).join("setup.sh");
+            if candidate.exists() {
+                break;
+            }
+        }
+        config.lang_dir.join(&lang.name).join("setup.sh")
+    };
     if !setup_sh.exists() {
         return Ok(());
     }
@@ -204,13 +270,18 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         .unwrap_or("");
 
     let lang_name = &lang.name;
-    let lang_template_dir = lang_dir.join(&lang.name);
+    // lang_dir for FORGE_LANG_DIR env var
+    let lang_dir = if let Some(ref flake) = lang.flake {
+        PathBuf::from(flake).parent().unwrap().to_path_buf()
+    } else {
+        config.lang_dir.join(&lang.name)
+    };
 
     let env_vars: [(&str, &str); 8] = [
         ("FORGE_PROJECT_NAME", &project_name),
         ("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or("")),
         ("FORGE_LANG", &lang_name),
-        ("FORGE_LANG_TEMPLATE_DIR", &lang_template_dir.to_string_lossy()),
+        ("FORGE_LANG_DIR", &lang_dir.to_string_lossy()),
         ("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or("")),
         ("FORGE_GITHUB_USER", &config.github_user),
         ("FORGE_EDITOR", &config.editor),
@@ -236,11 +307,17 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
 
 fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
     for inc_name in includes {
-        let setup_sh = config.include_dir.join(inc_name).join("setup.sh");
-        if !setup_sh.exists() {
-            eprintln!("warning: include '{}' not found, skipping", inc_name);
-            continue;
-        }
+        let setup_sh = match get_setup_sh_from_includes_json(inc_name, config) {
+            Ok(Some(sh)) => sh,
+            Ok(None) => {
+                eprintln!("warning: include '{}' not found in includes.json, skipping", inc_name);
+                continue;
+            }
+            Err(e) => {
+                eprintln!("warning: could not read includes.json: {}, skipping '{}'", e, inc_name);
+                continue;
+            }
+        };
 
         let project_name = project_path.file_name()
             .and_then(|n| n.to_str())
@@ -256,6 +333,7 @@ fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &Forg
         ];
 
         let mut cmd = std::process::Command::new("bash");
+        cmd.arg("-c");
         cmd.arg(&setup_sh);
         for (k, v) in &env_vars {
             cmd.env(k, v);

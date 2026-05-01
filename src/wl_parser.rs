@@ -25,6 +25,8 @@ pub struct Language {
     pub run: Option<String>,
     pub test: Option<String>,
     pub check: Option<String>,
+    /// Absolute path to the language's flake.nix (from langs.json at sync time)
+    pub flake: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +58,7 @@ pub fn parse_lang_wl(path: &Path) -> Result<Language> {
         run: fields.get("run").cloned(),
         test: fields.get("test").cloned(),
         check: fields.get("check").cloned(),
+        flake: None,
     })
 }
 
