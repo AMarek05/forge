@@ -55,11 +55,13 @@ impl ForgeConfig {
         let mut config: ForgeConfig = serde_json::from_str(&content)
             .with_context(|| format!("failed to parse {}", config_path.display()))?;
 
-        // Resolve symlinks so paths are canonical
+        // Keep lang_dir and include_dir as user-facing paths (NOT canonicalized)
+        // They point to ~/.forge/langs and ~/.forge/includes — user-facing dirs
+        // Only canonicalize config_dir for reliable file lookups
         config.config_dir = config_dir.canonicalize()
             .unwrap_or_else(|_| PathBuf::from(config_dir));
-        config.lang_dir = config.lang_dir.canonicalize().unwrap_or(config.lang_dir);
-        config.include_dir = config.include_dir.canonicalize().unwrap_or(config.include_dir);
+        config.lang_dir = PathBuf::from(&config.lang_dir);
+        config.include_dir = PathBuf::from(&config.include_dir);
         config.sync_base = config.sync_base.canonicalize().unwrap_or(config.sync_base);
 
         Ok(config)
