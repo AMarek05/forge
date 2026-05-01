@@ -16,6 +16,8 @@ rustPlatform.buildRustPackage {
   cargoSha256 = "sha256-GXQqRMeP9XGz25sJ8W7i3FHn2sksKDR8Gij6IK4dsPE=";
   buildInputs = [ pkg-config openssl dbus fzf direnv nix ];
 
+  meta.mainProgram = "forge";
+
   postInstall = ''
     mkdir -p $out/share/forge/languages
     mkdir -p $out/share/forge/includes
