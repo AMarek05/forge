@@ -20,7 +20,7 @@ use crate::wl_parser::parse_wl;
 pub fn run(flags: &SyncFlags) -> Result<()> {
     let config = ForgeConfig::load()?;
 
-    // These can technically run in parallel if you want to spawn threads, 
+    // These can technically run in parallel if you want to spawn threads,
     // but running them sequentially is usually fine unless all flags are true.
     if flags.langs {
         sync_langs(&config)?;
@@ -130,7 +130,7 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
             if !inc_path.is_dir() {
                 continue;
             }
-            
+
             let include_wl_path = inc_path.join("include.wl");
             let setup_sh_path = inc_path.join("setup.sh");
 
@@ -138,7 +138,7 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
                 let content = fs::read_to_string(&include_wl_path)?;
                 let mut desc = String::new();
                 let mut provides_raw = String::new();
-                
+
                 for line in content.lines() {
                     let line = line.trim();
                     if line.is_empty() || line.starts_with('#') {
@@ -189,12 +189,13 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
 // ─── sync (default — project index sync) ────────────────────────────────────
 
 fn sync_projects(config: &ForgeConfig) -> Result<()> {
-    let sync_base = &config.sync_base;
+    // 1. Always start the scan from the user's home directory
+    let home_dir = dirs::home_dir().context("Could not find home directory")?;
 
+    // (If the index doesn't exist, we still default its internal base to sync_base)
     let mut index = index_mod::load_index()
-        .unwrap_or_else(|_| ProjectIndex::new(sync_base.clone()));
+        .unwrap_or_else(|_| ProjectIndex::new(expand_tilde(Path::new(&config.sync_base))));
 
-    // Map existing entries and count stale ones in a single pass
     let mut stale_count = 0;
     let existing: std::collections::HashMap<String, (Option<String>, u32)> = index
         .projects
@@ -210,16 +211,27 @@ fn sync_projects(config: &ForgeConfig) -> Result<()> {
         })
         .collect();
 
-    // OPTIMIZATION: Use Walkdir + Rayon parallel bridge to find and parse .wl files concurrently
-    let new_projects: Vec<_> = WalkDir::new(sync_base)
+    // 2. Walk from home_dir instead of sync_base
+    let new_projects: Vec<_> = WalkDir::new(&home_dir)
         .into_iter()
+        .filter_entry(|e| {
+            if e.depth() == 0 {
+                return true;
+            }
+            let is_hidden = e.file_name().to_string_lossy().starts_with('.');
+            if e.file_type().is_dir() {
+                !is_hidden
+            } else {
+                true // Let files through to match .wl
+            }
+        })
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file() && e.file_name() == ".wl")
         .par_bridge()
         .filter_map(|entry| {
             let wl_path = entry.path();
-            let path = wl_path.parent().unwrap(); // Safe because we matched a file named ".wl"
-            
+            let path = wl_path.parent().unwrap();
+
             parse_wl(wl_path).ok().map(|wl| {
                 let name = wl.name.unwrap_or_else(|| {
                     path.file_name()
@@ -234,18 +246,17 @@ fn sync_projects(config: &ForgeConfig) -> Result<()> {
         })
         .collect();
 
-    // Map new projects back into our index, preserving state and diffing includes
     let updated: Vec<ProjectEntry> = new_projects
         .into_iter()
         .map(|(name, lang, project_path, _includes)| {
-            let (last_opened, open_count) = existing
-                .get(&name)
-                .cloned()
-                .unwrap_or((None, 0));
+            let (last_opened, open_count) = existing.get(&name).cloned().unwrap_or((None, 0));
 
-            // Diff includes against applied-includes and run missing setups
             if let Err(e) = verify_and_diff(&project_path, config) {
-                eprintln!("warning: {}: {} — skipping include sync", project_path.display(), e);
+                eprintln!(
+                    "warning: {}: {} — skipping include sync",
+                    project_path.display(),
+                    e
+                );
             }
 
             ProjectEntry {
@@ -285,4 +296,19 @@ fn now_iso() -> String {
         .unwrap()
         .as_secs();
     now.to_string()
+}
+
+fn expand_tilde(path: &Path) -> PathBuf {
+    if let Some(path_str) = path.to_str() {
+        if path_str.starts_with("~/") || path_str == "~" {
+            if let Some(mut home) = dirs::home_dir() {
+                let remainder = path_str.trim_start_matches("~/").trim_start_matches('~');
+                if !remainder.is_empty() {
+                    home.push(remainder);
+                }
+                return home;
+            }
+        }
+    }
+    path.to_path_buf()
 }
