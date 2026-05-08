@@ -21,7 +21,17 @@ fn now_iso() -> String {
     format!("{}", now)
 }
 
-pub fn run(name: String, lang: String, no_open: bool, _setup: bool, include: Option<String>, path: Option<String>, _run: Option<String>, editor: bool, dry_run: bool) -> Result<()> {
+pub fn run(
+    name: String,
+    lang: String,
+    no_open: bool,
+    _setup: bool,
+    include: Option<String>,
+    path: Option<String>,
+    _run: Option<String>,
+    editor: bool,
+    dry_run: bool,
+) -> Result<()> {
     let config = ForgeConfig::load()?;
     let lang = load_language(&lang, &config)?;
 
@@ -113,12 +123,12 @@ fn get_flake_from_langs_json(lang_name: &str, config: &ForgeConfig) -> Result<Op
     if !langs_path.exists() {
         return Ok(None);
     }
-    let content = std::fs::read_to_string(&langs_path)
-        .context("failed to read langs.json")?;
-    let entries: Vec<serde_json::Value> = serde_json::from_str(&content)
-        .context("failed to parse langs.json")?;
+    let content = std::fs::read_to_string(&langs_path).context("failed to read langs.json")?;
+    let entries: Vec<serde_json::Value> =
+        serde_json::from_str(&content).context("failed to parse langs.json")?;
     for entry in entries {
-        if entry.get("name")
+        if entry
+            .get("name")
             .and_then(|v| v.as_str())
             .map(|s| s == lang_name)
             .unwrap_or(false)
@@ -137,12 +147,13 @@ fn get_setup_sh_from_includes_json(inc_name: &str, config: &ForgeConfig) -> Resu
     if !includes_path.exists() {
         return Ok(None);
     }
-    let content = std::fs::read_to_string(&includes_path)
-        .context("failed to read includes.json")?;
-    let entries: Vec<serde_json::Value> = serde_json::from_str(&content)
-        .context("failed to parse includes.json")?;
+    let content =
+        std::fs::read_to_string(&includes_path).context("failed to read includes.json")?;
+    let entries: Vec<serde_json::Value> =
+        serde_json::from_str(&content).context("failed to parse includes.json")?;
     for entry in entries {
-        if entry.get("name")
+        if entry
+            .get("name")
             .and_then(|v| v.as_str())
             .map(|s| s == inc_name)
             .unwrap_or(false)
@@ -155,7 +166,12 @@ fn get_setup_sh_from_includes_json(inc_name: &str, config: &ForgeConfig) -> Resu
     Ok(None)
 }
 
-fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, includes: &[String]) -> Result<String> {
+fn build_wl_content(
+    name: &str,
+    lang: &Language,
+    existing_wl: Option<&PathBuf>,
+    includes: &[String],
+) -> Result<String> {
     // Pre-declare all fields when creating a new project.
     // When re-editing an existing .wl, carry over user-modified values.
     let mut lines = vec![
@@ -167,7 +183,11 @@ fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, 
 
     // includes
     if !includes.is_empty() {
-        let inc_str = includes.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(",");
+        let inc_str = includes
+            .iter()
+            .map(|s| format!("\"{}\"", s))
+            .collect::<Vec<_>>()
+            .join(",");
         lines.push(format!("includes=[{}]", inc_str));
     } else {
         lines.push(String::from("includes=[]"));
@@ -196,7 +216,7 @@ fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, 
     }
 
     // Carry over existing user-modified fields if .wl already exists
-    if let Some(ref path) = existing_wl {
+    if let Some(path) = existing_wl {
         if let Ok(existing) = parse_wl(path) {
             if let Some(ref desc) = existing.desc {
                 if !desc.is_empty() {
@@ -209,7 +229,12 @@ fn build_wl_content(name: &str, lang: &Language, existing_wl: Option<&PathBuf>, 
             if !existing.tags.is_empty() {
                 // Replace empty tags
                 if let Some(idx) = lines.iter().position(|l| l == "tags=[]") {
-                    let tags_str = existing.tags.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(",");
+                    let tags_str = existing
+                        .tags
+                        .iter()
+                        .map(|s| format!("\"{}\"", s))
+                        .collect::<Vec<_>>()
+                        .join(",");
                     lines[idx] = format!("tags=[{}]", tags_str);
                 }
             }
@@ -265,7 +290,8 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
         return Ok(());
     }
 
-    let project_name = project_path.file_name()
+    let project_name = project_path
+        .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("");
 
@@ -273,15 +299,20 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
     // lang_dir for FORGE_LANG_DIR env var — parent of lang dir (e.g. ~/.forge/langs/default)
     // so module can use $FORGE_LANG_DIR/${lang_name}/flake.nix
     let lang_dir = if let Some(ref flake) = lang.flake {
-        PathBuf::from(flake).parent().unwrap().parent().unwrap().to_path_buf()
+        PathBuf::from(flake)
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
     } else {
         config.lang_default_dir()
     };
 
     let env_vars: [(&str, &str); 8] = [
-        ("FORGE_PROJECT_NAME", &project_name),
+        ("FORGE_PROJECT_NAME", project_name),
         ("FORGE_PROJECT_PATH", project_path.to_str().unwrap_or("")),
-        ("FORGE_LANG", &lang_name),
+        ("FORGE_LANG", lang_name),
         ("FORGE_LANG_DIR", &lang_dir.to_string_lossy()),
         ("FORGE_SYNC_BASE", config.sync_base.to_str().unwrap_or("")),
         ("FORGE_GITHUB_USER", &config.github_user),
@@ -296,7 +327,8 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
     }
     cmd.current_dir(project_path);
 
-    let status = cmd.status()
+    let status = cmd
+        .status()
         .with_context(|| format!("language setup failed for {}", lang.name))?;
 
     if !status.success() {
@@ -306,21 +338,32 @@ fn run_lang_setup(lang: &Language, project_path: &PathBuf, config: &ForgeConfig)
     Ok(())
 }
 
-fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &ForgeConfig) -> Result<()> {
+fn run_include_setups(
+    includes: &[String],
+    project_path: &PathBuf,
+    config: &ForgeConfig,
+) -> Result<()> {
     for inc_name in includes {
         let setup_sh = match get_setup_sh_from_includes_json(inc_name, config) {
             Ok(Some(sh)) => sh,
             Ok(None) => {
-                eprintln!("warning: include '{}' not found in includes.json, skipping", inc_name);
+                eprintln!(
+                    "warning: include '{}' not found in includes.json, skipping",
+                    inc_name
+                );
                 continue;
             }
             Err(e) => {
-                eprintln!("warning: could not read includes.json: {}, skipping '{}'", e, inc_name);
+                eprintln!(
+                    "warning: could not read includes.json: {}, skipping '{}'",
+                    e, inc_name
+                );
                 continue;
             }
         };
 
-        let project_name = project_path.file_name()
+        let project_name = project_path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("");
 
@@ -341,11 +384,15 @@ fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &Forg
         }
         cmd.current_dir(project_path);
 
-        let status = cmd.status()
+        let status = cmd
+            .status()
             .with_context(|| format!("include setup '{}' failed", inc_name))?;
 
         if !status.success() {
-            anyhow::bail!("include '{}' setup.sh exited with non-zero status", inc_name);
+            anyhow::bail!(
+                "include '{}' setup.sh exited with non-zero status",
+                inc_name
+            );
         }
     }
 
@@ -353,8 +400,9 @@ fn run_include_setups(includes: &[String], project_path: &PathBuf, config: &Forg
 }
 
 fn add_to_index(name: &str, lang: &str, path: &PathBuf) -> Result<()> {
-    let mut index = index_mod::load_index()
-        .unwrap_or_else(|_| ProjectIndex::new(path.parent().map(|p| p.to_path_buf()).unwrap_or_default()));
+    let mut index = index_mod::load_index().unwrap_or_else(|_| {
+        ProjectIndex::new(path.parent().map(|p| p.to_path_buf()).unwrap_or_default())
+    });
 
     // Check for duplicate
     if index.projects.iter().any(|p| p.name == name) {
@@ -376,3 +424,4 @@ fn add_to_index(name: &str, lang: &str, path: &PathBuf) -> Result<()> {
 
     Ok(())
 }
+

@@ -11,7 +11,9 @@ pub fn run(name: String) -> Result<()> {
     let config = ForgeConfig::load()?;
     let index = index_mod::load_index()?;
 
-    let project = index.projects.iter()
+    let project = index
+        .projects
+        .iter()
         .find(|p| p.name == name)
         .ok_or_else(|| anyhow::anyhow!("project '{}' not found in index", name))?;
 
@@ -25,9 +27,7 @@ pub fn run(name: String) -> Result<()> {
         editor.clone()
     };
 
-    Command::new("sh")
-        .args(["-c", &cmd])
-        .status()?;
+    Command::new("sh").args(["-c", &cmd]).status()?;
 
     Ok(())
 }

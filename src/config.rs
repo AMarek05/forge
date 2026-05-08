@@ -58,7 +58,8 @@ impl ForgeConfig {
         // Keep lang_dir and include_dir as user-facing paths (NOT canonicalized)
         // They point to ~/.forge/langs and ~/.forge/includes — user-facing dirs
         // Only canonicalize config_dir for reliable file lookups
-        config.config_dir = config_dir.canonicalize()
+        config.config_dir = config_dir
+            .canonicalize()
             .unwrap_or_else(|_| PathBuf::from(config_dir));
         config.lang_dir = PathBuf::from(&config.lang_dir);
         config.include_dir = PathBuf::from(&config.include_dir);
@@ -70,21 +71,6 @@ impl ForgeConfig {
     /// Directory containing config.json and index.json (e.g. ~/.forge)
     pub fn config_dir(&self) -> PathBuf {
         self.config_dir.clone()
-    }
-
-    /// Project index file path
-    pub fn index_path(&self) -> PathBuf {
-        self.config_dir.join("index.json")
-    }
-
-    /// Per-project state directory (inside config_dir)
-    pub fn state_dir(&self) -> PathBuf {
-        self.config_dir.join("state")
-    }
-
-    /// Project root — same as sync_base
-    pub fn projects_dir(&self) -> PathBuf {
-        self.sync_base.clone()
     }
 
     /// Path to the default languages directory (symlink to Nix store)
@@ -107,3 +93,4 @@ impl ForgeConfig {
         self.include_dir.join("custom")
     }
 }
+
