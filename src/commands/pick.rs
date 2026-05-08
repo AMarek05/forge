@@ -54,6 +54,7 @@ pub fn run(tags: Option<String>) -> Result<()> {
     // fzf expects keys: Enter=open, Ctrl+R=remove, Ctrl+E=edit, Ctrl+O=open-dir, Ctrl+D=dry-run, Ctrl+S=toggle-setup
     let mut fzf_output = Command::new("fzf")
         .args([
+            "--bind=tab:up,btab:down",
             "--ansi",
             "--preview-window=right:60%",
             "--preview=cat {2}/.wl",
