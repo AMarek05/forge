@@ -4,6 +4,7 @@
   direnv = "use flake";
   buildInputs = [
     "gcc"
-    "make"
+    "gnumake"
   ];
 }
+
