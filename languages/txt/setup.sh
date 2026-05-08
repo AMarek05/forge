@@ -1,7 +1,6 @@
 #!/bin/bash
 # forge_description: Scaffold a plain text notes project — no toolchain
-# forge_provides: txt-notes
-# forge_provides: 
+# forge_provides:
 
 set -e
 
@@ -15,7 +14,3 @@ mkdir -p "$FORGE_PROJECT_PATH"
 
 cd "$FORGE_PROJECT_PATH"
 
-# Plain text — no .envrc, no flake.nix, just mark the project type
-touch ".txt-marker"
-
-direnv allow

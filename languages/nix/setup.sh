@@ -1,13 +1,13 @@
 #!/bin/bash
 # forge_description: Scaffold a Nix flake project with direnv
-# forge_provides: 
+# forge_provides:
 
 set -e
 
 render_template() {
     local src="$1"
     local dst="$2"
-    sed "s/{{PROJECT_NAME}}/${FORGE_PROJECT_NAME}/g" "$src" > "$dst"
+    sed "s/{{PROJECT_NAME}}/${FORGE_PROJECT_NAME}/g" "$src" >"$dst"
 }
 
 if [ "$FORGE_DRY_RUN" = "1" ]; then
@@ -23,8 +23,8 @@ mkdir -p "$FORGE_PROJECT_PATH"
 cd "$FORGE_PROJECT_PATH"
 
 # Write .envrc
-cat > .envrc << 'EOF'
-use flake
+cat >.envrc <<'EOF'
+use flake path:.
 EOF
 
 # Write flake.nix (from template)
@@ -32,7 +32,7 @@ if [ -f "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" ]; then
     render_template "$FORGE_LANG_TEMPLATE_DIR/flake.nix.template" flake.nix
 else
     # Minimal default flake if no template
-    cat > flake.nix << 'FLKEOF'
+    cat >flake.nix <<'FLKEOF'
 {
   description = "{{PROJECT_NAME}}";
 
@@ -60,11 +60,5 @@ FLKEOF
     sed -i "s/{{PROJECT_NAME}}/${FORGE_PROJECT_NAME}/g" flake.nix
 fi
 
-# Init git and commit flake.nix so nix develop can see it
-if [ ! -d .git ]; then
-    git init
-    git add flake.nix
-    git commit -m "init"
-fi
-
 direnv allow
+
