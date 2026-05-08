@@ -1,11 +1,15 @@
 //! `forge sync` — re-scan sync base and rebuild the index.
 //! Also refresh langs.json and includes.json from filesystem scan.
 
-use std::fs;
+use std::fs::{self, File};
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result};
+use rayon::prelude::*;
+use regex::Regex;
+use walkdir::WalkDir;
 
 use crate::config::ForgeConfig;
 use crate::index::{self as index_mod, ProjectEntry, ProjectIndex};
@@ -16,6 +20,8 @@ use crate::wl_parser::parse_wl;
 pub fn run(flags: &SyncFlags) -> Result<()> {
     let config = ForgeConfig::load()?;
 
+    // These can technically run in parallel if you want to spawn threads, 
+    // but running them sequentially is usually fine unless all flags are true.
     if flags.langs {
         sync_langs(&config)?;
     }
@@ -40,36 +46,43 @@ pub struct SyncFlags {
 
 fn sync_langs(config: &ForgeConfig) -> Result<()> {
     let output_path = config.config_dir().join("langs.json");
-
     let mut entries = vec![];
 
-    // Scan default/ and custom/ subdirs
-    for base in [config.lang_default_dir(), config.lang_custom_dir()] {
-        if !base.exists() {
-            continue;
-        }
-        for entry in fs::read_dir(&base)? {
-            let entry = entry?;
-            let lang_path = entry.path();
-            if !lang_path.is_dir() {
-                continue;
-            }
+    let bases = [config.lang_default_dir(), config.lang_custom_dir()];
+
+    // Flatten all language paths to process them in parallel
+    let lang_paths: Vec<PathBuf> = bases
+        .iter()
+        .filter(|b| b.exists())
+        .flat_map(|base| fs::read_dir(base).ok())
+        .flatten()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
+        .collect();
+
+    // Process parsed languages concurrently
+    entries = lang_paths
+        .par_iter()
+        .filter_map(|lang_path| {
             let wl_path = lang_path.join("lang.wl");
             if !wl_path.exists() {
-                continue;
+                return None;
             }
-            // Single parse — parse_lang_wl returns full metadata
+
             match crate::wl_parser::parse_lang_wl(&wl_path) {
                 Ok(lang_meta) => {
                     let name = if !lang_meta.name.is_empty() {
                         lang_meta.name.clone()
                     } else {
-                        lang_path.file_name()
+                        lang_path
+                            .file_name()
                             .and_then(|n| n.to_str())
                             .unwrap_or("unknown")
                             .to_string()
                     };
-                    entries.push(serde_json::json!({
+
+                    Some(serde_json::json!({
                         "name": name,
                         "description": lang_meta.desc,
                         "flake": lang_path.join("flake.nix").to_string_lossy().to_string(),
@@ -83,20 +96,17 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
                             "test": lang_meta.test.unwrap_or_default(),
                             "check": lang_meta.check.unwrap_or_default(),
                         }
-                    }));
+                    }))
                 }
                 Err(e) => {
                     eprintln!("warning: {}: {} — skipping", wl_path.display(), e);
+                    None
                 }
             }
-        }
-    }
+        })
+        .collect();
 
-    let json = serde_json::to_string_pretty(&entries)
-        .context("failed to serialize langs.json")?;
-    fs::write(&output_path, json)
-        .context(format!("failed to write {}", output_path.display()))?;
-
+    write_json_stream(&output_path, &entries)?;
     println!("langs.json: {} entries written", entries.len());
     Ok(())
 }
@@ -105,8 +115,10 @@ fn sync_langs(config: &ForgeConfig) -> Result<()> {
 
 fn sync_includes(config: &ForgeConfig) -> Result<()> {
     let output_path = config.config_dir().join("includes.json");
-
     let mut entries = vec![];
+
+    // OPTIMIZATION: Compile Regex ONCE outside the loop
+    let key_re = Regex::new(r#"^([a-z_]+)\s*=\s*(.+)$"#).unwrap();
 
     for base in [config.include_default_dir(), config.include_custom_dir()] {
         if !base.exists() {
@@ -118,15 +130,15 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
             if !inc_path.is_dir() {
                 continue;
             }
+            
             let include_wl_path = inc_path.join("include.wl");
             let setup_sh_path = inc_path.join("setup.sh");
 
-            // Parse include.wl using wl_parser helpers
             let (description, provides) = if include_wl_path.exists() {
                 let content = fs::read_to_string(&include_wl_path)?;
-                let key_re = regex::Regex::new(r#"^([a-z_]+)\s*=\s*(.+)$"#).unwrap();
                 let mut desc = String::new();
                 let mut provides_raw = String::new();
+                
                 for line in content.lines() {
                     let line = line.trim();
                     if line.is_empty() || line.starts_with('#') {
@@ -154,7 +166,8 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
                 String::new()
             };
 
-            let name = inc_path.file_name()
+            let name = inc_path
+                .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("unknown")
                 .to_string();
@@ -168,11 +181,7 @@ fn sync_includes(config: &ForgeConfig) -> Result<()> {
         }
     }
 
-    let json = serde_json::to_string_pretty(&entries)
-        .context("failed to serialize includes.json")?;
-    fs::write(&output_path, json)
-        .context(format!("failed to write {}", output_path.display()))?;
-
+    write_json_stream(&output_path, &entries)?;
     println!("includes.json: {} entries written", entries.len());
     Ok(())
 }
@@ -185,86 +194,88 @@ fn sync_projects(config: &ForgeConfig) -> Result<()> {
     let mut index = index_mod::load_index()
         .unwrap_or_else(|_| ProjectIndex::new(sync_base.clone()));
 
-    // Detect stale entries (indexed but .wl no longer exists)
+    // Map existing entries and count stale ones in a single pass
     let mut stale_count = 0;
-    for entry in &index.projects {
-        if !entry.path.join(".wl").exists() {
-            println!("removed: {} (directory gone)", entry.name);
-            stale_count += 1;
-        }
-    }
-
-    // Build map of existing entries by name (preserve last_opened, open_count)
-    let existing: std::collections::HashMap<String, (Option<String>, u32)> = index.projects.iter()
-        .map(|p| (p.name.clone(), (p.last_opened.clone(), p.open_count)))
+    let existing: std::collections::HashMap<String, (Option<String>, u32)> = index
+        .projects
+        .into_iter()
+        .filter_map(|p| {
+            if !p.path.join(".wl").exists() {
+                println!("removed: {} (directory gone)", p.name);
+                stale_count += 1;
+                None
+            } else {
+                Some((p.name.clone(), (p.last_opened, p.open_count)))
+            }
+        })
         .collect();
 
-    // Walk sync_base recursively for all .wl files
-    let mut new_projects = vec![];
-    walk_dir(sync_base, &mut new_projects)?;
+    // OPTIMIZATION: Use Walkdir + Rayon parallel bridge to find and parse .wl files concurrently
+    let new_projects: Vec<_> = WalkDir::new(sync_base)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file() && e.file_name() == ".wl")
+        .par_bridge()
+        .filter_map(|entry| {
+            let wl_path = entry.path();
+            let path = wl_path.parent().unwrap(); // Safe because we matched a file named ".wl"
+            
+            parse_wl(wl_path).ok().map(|wl| {
+                let name = wl.name.unwrap_or_else(|| {
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("")
+                        .to_string()
+                });
+                let lang = wl.lang.unwrap_or_else(|| "txt".to_string());
 
-    // Preserve last_opened and open_count for known projects
-    let mut updated = vec![];
-    for (name, lang, path, _includes) in new_projects {
-        let (last_opened, open_count) = existing.get(&name)
-            .cloned()
-            .unwrap_or((None, 0));
+                (name, lang, path.to_path_buf(), wl.includes)
+            })
+        })
+        .collect();
 
-        // Diff includes against applied-includes and run missing setups
-        let project_path = PathBuf::from(&path);
-        if let Err(e) = verify_and_diff(&project_path, &config) {
-            eprintln!("warning: {}: {} — skipping include sync", project_path.display(), e);
-        }
+    // Map new projects back into our index, preserving state and diffing includes
+    let updated: Vec<ProjectEntry> = new_projects
+        .into_iter()
+        .map(|(name, lang, project_path, _includes)| {
+            let (last_opened, open_count) = existing
+                .get(&name)
+                .cloned()
+                .unwrap_or((None, 0));
 
-        updated.push(ProjectEntry {
-            name,
-            lang,
-            path: project_path,
-            added_at: now_iso(),
-            last_opened,
-            open_count,
-        });
-    }
+            // Diff includes against applied-includes and run missing setups
+            if let Err(e) = verify_and_diff(&project_path, config) {
+                eprintln!("warning: {}: {} — skipping include sync", project_path.display(), e);
+            }
 
+            ProjectEntry {
+                name,
+                lang,
+                path: project_path,
+                added_at: now_iso(),
+                last_opened,
+                open_count,
+            }
+        })
+        .collect();
+
+    let new_count = updated.len();
     index.projects = updated;
     index_mod::save_index(&index)?;
 
-    println!("synced {} projects (removed {})", index.projects.len(), stale_count);
+    println!("synced {} projects (removed {})", new_count, stale_count);
 
     Ok(())
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-fn walk_dir(dir: &Path, results: &mut Vec<(String, String, String, Vec<String>)>) -> Result<()> {
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            let wl_path = path.join(".wl");
-            if wl_path.is_file() {
-                if let Ok(wl) = parse_wl(&wl_path) {
-                    let name = wl.name.unwrap_or_else(|| {
-                        path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("")
-                            .to_string()
-                    });
-                    let lang = wl.lang.unwrap_or_else(|| "txt".to_string());
-
-                    results.push((
-                        name,
-                        lang,
-                        path.to_string_lossy().to_string(),
-                        wl.includes,
-                    ));
-                }
-            } else {
-                walk_dir(&path, results)?;
-            }
-        }
-    }
+/// Streams JSON directly to a BufWriter instead of holding giant Strings in memory
+fn write_json_stream<T: serde::Serialize>(path: &Path, data: &T) -> Result<()> {
+    let file = File::create(path).context(format!("failed to create {}", path.display()))?;
+    let writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(writer, data)
+        .context(format!("failed to serialize JSON to {}", path.display()))?;
     Ok(())
 }
 
@@ -273,5 +284,5 @@ fn now_iso() -> String {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    format!("{}", now)
+    now.to_string()
 }
